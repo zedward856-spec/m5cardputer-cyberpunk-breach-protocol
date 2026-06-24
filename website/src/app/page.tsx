@@ -43,13 +43,13 @@ export default function Leaderboard() {
 
           {loading ? (
             <div className="table-row">
-              <div colSpan={3} style={{ textAlign: 'center', color: 'var(--cp-dim)' }}>
+              <div style={{ gridColumn: 'span 3', textAlign: 'center', color: 'var(--cp-dim)' }}>
                 [ CONNECTING TO DATABANK... ]
               </div>
             </div>
           ) : scores.length === 0 ? (
             <div className="table-row">
-              <div colSpan={3} style={{ textAlign: 'center', color: 'var(--cp-dim)' }}>
+              <div style={{ gridColumn: 'span 3', textAlign: 'center', color: 'var(--cp-dim)' }}>
                 [ NO NETWORK ACTIVITY DETECTED ]
               </div>
             </div>
