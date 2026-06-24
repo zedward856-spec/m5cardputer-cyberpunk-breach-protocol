@@ -154,7 +154,7 @@ void drawSplash() {
     
     M5Cardputer.Display.setTextColor(CP_DIM);
     M5Cardputer.Display.setCursor(125, 60);
-    M5Cardputer.Display.print("VERSION: v3.1");
+    M5Cardputer.Display.print("VERSION: v3.2");
     
     int maxLogs = 7;
     int y = 35;

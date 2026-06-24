@@ -64,7 +64,7 @@ export default function Leaderboard() {
           )}
         </div>
         <div style={{ marginTop: '20px', textAlign: 'center', color: 'var(--cp-dim)', fontSize: '0.8rem', letterSpacing: '2px' }}>
-          VERSION: v3.1
+          VERSION: v3.2
         </div>
       </div>
     </>
