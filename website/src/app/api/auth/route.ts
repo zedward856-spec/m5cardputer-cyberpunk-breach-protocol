@@ -23,14 +23,14 @@ export async function POST(req: Request) {
 
         if (users[username]) {
             if (users[username] === password) {
-                return NextResponse.json({ success: true, message: 'Logged in' });
+                return NextResponse.json({ success: true, message: 'Logged in', action: 'login' });
             } else {
                 return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
             }
         } else {
             users[username] = password;
             fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
-            return NextResponse.json({ success: true, message: 'User created' });
+            return NextResponse.json({ success: true, message: 'User created', action: 'signup' });
         }
     } catch (e) {
         return NextResponse.json({ error: 'Server error' }, { status: 500 });

@@ -297,13 +297,26 @@ void handleAuthInput(Keyboard_Class::KeysState status) {
             http.addHeader("Content-Type", "application/json");
             String payload = "{\"username\":\"" + authUser + "\",\"password\":\"" + authPass + "\"}";
             int httpCode = http.POST(payload);
-            http.end();
             
             if (httpCode == 200) {
+                String response = http.getString();
+                JsonDocument doc;
+                deserializeJson(doc, response);
+                String action = doc["action"].as<String>();
+                
+                if (action == "signup") {
+                    drawMessage("NEW OPERATIVE REGISTERED!");
+                } else {
+                    drawMessage("LOGIN SUCCESSFUL!");
+                }
+                http.end();
+                delay(1500);
+                
                 isGuest = false;
                 appState = STATE_MAIN_MENU;
                 drawMainMenu();
             } else {
+                http.end();
                 drawMessage("ACCESS DENIED");
                 delay(2000);
                 drawAuthMenu();
