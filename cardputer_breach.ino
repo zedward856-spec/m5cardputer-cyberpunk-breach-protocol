@@ -645,12 +645,12 @@ void drawGridSelect() {
     canvas.fillScreen(CP_BG);
     canvas.setTextColor(CP_CYAN);
     canvas.setTextSize(2);
-    canvas.drawCenterString("SELECT GRID SIZE", 120, 15);
+    canvas.drawCenterString("SELECT GRID SIZE", 120, 10);
     
-    int btnW = 120;
+    int btnW = 232;
     int btnH = 26;
-    int startX = 60;
-    int startY = 45;
+    int startX = 4;
+    int startY = 35;
     int spacing = 32;
     int chip = 6;
     
