@@ -780,8 +780,11 @@ void drawGameOverFailed() {
     canvas.drawCenterString("SYSTEM LOCKED", 120, 30);
     canvas.setTextSize(1);
     canvas.drawCenterString("ALL ACCUMULATED SCORE LOST", 120, 60);
-    canvas.setTextColor(WHITE);
-    if (blinkState) canvas.drawCenterString("> Press ENTER", 120, 100);
+    uint16_t btnColor = blinkState ? CP_YELLOW : CP_DIM;
+    canvas.drawRect(70, 95, 100, 20, btnColor);
+    canvas.setTextColor(btnColor);
+    canvas.setTextSize(1);
+    canvas.drawCenterString("PRESS ENTER", 120, 101);
     canvas.pushSprite(0, 0); canvas.endWrite();
 }
 
