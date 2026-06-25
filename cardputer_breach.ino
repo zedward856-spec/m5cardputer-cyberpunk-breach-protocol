@@ -16,6 +16,8 @@ M5Canvas canvas(&M5Cardputer.Display);
 // --- AUDIO PLACEHOLDERS ---
 #include "sounds.h"
 
+int globalVolume = 255;
+
 const unsigned char* sound_hover = buffer_wav;
 size_t sound_hover_size = buffer_wav_len;
 const unsigned char* sound_select = button_wav;
@@ -1239,6 +1241,26 @@ void handleAccountInput(Keyboard_Class::KeysState status) {
 void loop() {
     M5Cardputer.update();
     unsigned long now = millis();
+    
+    if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
+        Keyboard_Class::KeysState status = M5Cardputer.Keyboard.keysState();
+        bool volChanged = false;
+        for (auto i : status.word) {
+            if (i == '-' || i == '_') {
+                globalVolume -= 25;
+                if (globalVolume < 0) globalVolume = 0;
+                volChanged = true;
+            } else if (i == '=' || i == '+') {
+                globalVolume += 25;
+                if (globalVolume > 255) globalVolume = 255;
+                volChanged = true;
+            }
+        }
+        if (volChanged) {
+            M5Cardputer.Speaker.setVolume(globalVolume);
+            playSound(sound_hover, sound_hover_size);
+        }
+    }
     
     if (appState == STATE_SPLASH) {
         if (now - lastLogUpdate > 200) {
