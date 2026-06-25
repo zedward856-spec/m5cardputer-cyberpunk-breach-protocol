@@ -220,7 +220,7 @@ void drawSplash() {
     
     canvas.setTextColor(CP_YELLOW);
     canvas.setCursor(125, 60);
-    canvas.print("VERSION: v4.0stable");
+    canvas.print("VERSION: v5.0sound");
     
     if (blinkState) {
         canvas.setTextColor(WHITE);
