@@ -1244,9 +1244,13 @@ void loop() {
     
     bool keyChanged = M5Cardputer.Keyboard.isChange();
     bool keyPressed = M5Cardputer.Keyboard.isPressed();
+    Keyboard_Class::KeysState globalStatus;
+    if (keyChanged && keyPressed) {
+        globalStatus = M5Cardputer.Keyboard.keysState();
+    }
     
     if (keyChanged && keyPressed) {
-        Keyboard_Class::KeysState status = M5Cardputer.Keyboard.keysState();
+        Keyboard_Class::KeysState status = globalStatus;
         bool volChanged = false;
         for (auto i : status.word) {
             if (i == '-' || i == '_') {
@@ -1277,7 +1281,7 @@ void loop() {
             drawSplash();
         }
         if (keyChanged && keyPressed) {
-            handleSplashInput(M5Cardputer.Keyboard.keysState());
+            handleSplashInput(globalStatus);
         }
         delay(10);
         return;
@@ -1293,7 +1297,7 @@ void loop() {
     
     if (appState == STATE_AUTH_MENU) {
         if (keyChanged && keyPressed) {
-            handleAuthInput(M5Cardputer.Keyboard.keysState());
+            handleAuthInput(globalStatus);
             if (appState == STATE_AUTH_MENU) drawAuthMenu();
         }
         delay(10);
@@ -1302,7 +1306,7 @@ void loop() {
     
     if (appState == STATE_WIFI_SCAN) {
         if (keyChanged && keyPressed) {
-            handleWifiScanInput(M5Cardputer.Keyboard.keysState());
+            handleWifiScanInput(globalStatus);
             if (appState == STATE_WIFI_SCAN) drawWifiScan();
         }
         delay(10);
@@ -1311,7 +1315,7 @@ void loop() {
     
     if (appState == STATE_WIFI_PASS) {
         if (keyChanged && keyPressed) {
-            handleWifiPassInput(M5Cardputer.Keyboard.keysState());
+            handleWifiPassInput(globalStatus);
             if (appState == STATE_WIFI_PASS) drawWifiPass();
         }
         delay(10);
@@ -1320,7 +1324,7 @@ void loop() {
 
     if (appState == STATE_MAIN_MENU) {
         if (keyChanged && keyPressed) {
-            handleMainMenuInput(M5Cardputer.Keyboard.keysState());
+            handleMainMenuInput(globalStatus);
             if (appState == STATE_MAIN_MENU) drawMainMenu();
         }
         delay(10);
@@ -1329,7 +1333,7 @@ void loop() {
 
     if (appState == STATE_LEADERBOARD) {
         if (keyChanged && keyPressed) {
-            Keyboard_Class::KeysState status = M5Cardputer.Keyboard.keysState();
+            Keyboard_Class::KeysState status = globalStatus;
             
             bool hasUp = false, hasDown = false;
             for (char c : status.word) {
@@ -1371,7 +1375,7 @@ void loop() {
     
     if (appState == STATE_ACCOUNT) {
         if (keyChanged && keyPressed) {
-            handleAccountInput(M5Cardputer.Keyboard.keysState());
+            handleAccountInput(globalStatus);
             if (appState == STATE_ACCOUNT) drawAccountMenu();
         }
         delay(10);
@@ -1380,7 +1384,7 @@ void loop() {
     
     if (appState == STATE_GRID_SELECT) {
         if (keyChanged && keyPressed) {
-            handleGridSelectInput(M5Cardputer.Keyboard.keysState());
+            handleGridSelectInput(globalStatus);
             if (appState == STATE_GRID_SELECT) drawGridSelect();
         }
         delay(10);
@@ -1394,7 +1398,7 @@ void loop() {
             drawPhaseTransition();
         }
         if (keyChanged && keyPressed) {
-            handlePhaseTransitionInput(M5Cardputer.Keyboard.keysState());
+            handlePhaseTransitionInput(globalStatus);
             if (appState == STATE_PHASE_TRANSITION) drawPhaseTransition();
         }
         delay(10);
@@ -1408,7 +1412,7 @@ void loop() {
             drawGameOverFailed();
         }
         if (keyChanged && keyPressed) {
-            if (M5Cardputer.Keyboard.keysState().enter) {
+            if (globalStatus.enter) {
                 playSound(sound_select, sound_select_size);
                 appState = STATE_MAIN_MENU;
                 drawMainMenu();
@@ -1456,7 +1460,7 @@ void loop() {
     }
     
     if (keyChanged && keyPressed) {
-        Keyboard_Class::KeysState status = M5Cardputer.Keyboard.keysState();
+        Keyboard_Class::KeysState status = globalStatus;
         
         if (gameOver) {
             if (status.enter) {
@@ -1576,4 +1580,6 @@ void loop() {
     }
     delay(10);
 }
+
+
 
