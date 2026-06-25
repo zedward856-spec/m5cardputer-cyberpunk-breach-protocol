@@ -645,13 +645,18 @@ void drawGridSelect() {
     canvas.fillScreen(CP_BG);
     canvas.setTextColor(CP_CYAN);
     canvas.setTextSize(2);
-    canvas.drawCenterString("SELECT GRID SIZE", 120, 10);
+    canvas.drawCenterString("SELECT GRID SIZE", 120, 5);
+    
+    canvas.setTextSize(1);
+    canvas.setTextColor(CP_DIM);
+    canvas.drawCenterString("THE BIGGER THE GRID,", 120, 22);
+    canvas.drawCenterString("THE MORE POINTS YOU EARN", 120, 32);
     
     int btnW = 232;
     int btnH = 26;
     int startX = 4;
-    int startY = 35;
-    int spacing = 32;
+    int startY = 46;
+    int spacing = 29;
     int chip = 6;
     
     for (int i = 0; i < 3; i++) {
@@ -667,7 +672,8 @@ void drawGridSelect() {
         canvas.setTextColor(c);
         canvas.setTextSize(2);
         String label = (i == 0) ? "3x3" : ((i == 1) ? "4x4" : "5x5");
-        canvas.drawCenterString(label, 120, y + 5);
+        canvas.setCursor(startX + 15, y + 5);
+        canvas.print(label);
     }
     
     canvas.pushSprite(0, 0); canvas.endWrite();
