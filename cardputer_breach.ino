@@ -149,6 +149,49 @@ void drawPhaseTransition();
 void drawGameOverFailed();
 void fetchLeaderboard(int offset = 0, int limit = 10);
 
+void drawMessage(String msg, String line2 = "");
+void drawGlitchText(String text, int x, int y, int size, uint16_t color, bool center = true) {
+    bool glitch = (random(100) < 60); // 60% chance to glitch when called
+    canvas.setTextSize(size);
+    
+    if (!glitch) {
+        canvas.setTextColor(color);
+        if (center) canvas.drawCenterString(text, x, y);
+        else canvas.drawString(text, x, y);
+        return;
+    }
+    
+    // Jitter
+    int jx = x + random(-4, 5);
+    int jy = y + random(-2, 3);
+    
+    // Color separation
+    if (random(2) == 0) {
+        canvas.setTextColor(TFT_MAGENTA);
+        if (center) canvas.drawCenterString(text, jx + random(2, 5), jy);
+        else canvas.drawString(text, jx + random(2, 5), jy);
+    }
+    
+    canvas.setTextColor(random(2) == 0 ? WHITE : color);
+    if (center) canvas.drawCenterString(text, jx, jy);
+    else canvas.drawString(text, jx, jy);
+    
+    // Slice (erase horizontal lines)
+    int numSlices = random(1, 4);
+    for (int i=0; i<numSlices; i++) {
+        int sy = jy + random(0, size * 8);
+        canvas.drawLine(jx - 100, sy, jx + 100, sy, CP_BG);
+        if (random(2) == 0) canvas.drawLine(jx - 100, sy+1, jx + 100, sy+1, CP_BG);
+    }
+    
+    // Random artifact lines
+    if (random(3) == 0) {
+        int ax = jx + random(-50, 50);
+        int ay = jy + random(0, size * 8);
+        canvas.drawLine(ax, ay, ax + random(10, 30), ay, color);
+    }
+}
+
 void drawMessage(String msg, String line2 = "") {
     canvas.startWrite();
     canvas.fillScreen(CP_BG);
@@ -585,9 +628,8 @@ void handleWifiPassInput(Keyboard_Class::KeysState status) {
 void drawMainMenu() {
     canvas.startWrite();
     canvas.fillScreen(CP_BG);
-    canvas.setTextColor(CP_CYAN);
-    canvas.setTextSize(2);
-    canvas.drawCenterString("NETWORK NODE", 120, 15);
+    
+    drawGlitchText("NETWORK NODE", 120, 15, 2, CP_CYAN);
     
     canvas.setTextSize(1);
     canvas.setTextColor(CP_DIM);
@@ -1383,6 +1425,14 @@ void loop() {
     }
 
     if (appState == STATE_MAIN_MENU) {
+        static unsigned long lastMenuGlitch = 0;
+        static unsigned long nextMenuGlitch = 1000;
+        if (now - lastMenuGlitch > nextMenuGlitch) {
+            drawMainMenu();
+            lastMenuGlitch = now;
+            nextMenuGlitch = random(100, 3000);
+        }
+        
         if (keyChanged && keyPressed) {
             handleMainMenuInput(globalStatus);
             if (appState == STATE_MAIN_MENU) drawMainMenu();
