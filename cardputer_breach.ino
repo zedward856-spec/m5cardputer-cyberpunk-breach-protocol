@@ -18,10 +18,12 @@ M5Canvas canvas(&M5Cardputer.Display);
 
 int globalVolume = 255;
 
-const unsigned char* sound_hover = buffer_wav;
-size_t sound_hover_size = buffer_wav_len;
+const unsigned char* sound_hover = nullptr;
+size_t sound_hover_size = 0;
 const unsigned char* sound_select = button_wav;
 size_t sound_select_size = button_wav_len;
+const unsigned char* sound_buffer = buffer_wav;
+size_t sound_buffer_size = buffer_wav_len;
 const unsigned char* sound_success = leaderboard_wav;
 size_t sound_success_size = leaderboard_wav_len;
 const unsigned char* sound_fail = error_wav;
@@ -1518,7 +1520,7 @@ void loop() {
             int cC = isRowActive ? cursorIdx : activeCol;
             
             if (matrix[cR][cC] != "") {
-                playSound(sound_select, sound_select_size);
+                playSound(sound_buffer, sound_buffer_size);
                 
                 buffer[bufferIndex++] = matrix[cR][cC];
                 matrix[cR][cC] = ""; 
@@ -1580,6 +1582,8 @@ void loop() {
     }
     delay(10);
 }
+
+
 
 
 
