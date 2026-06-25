@@ -861,7 +861,7 @@ void setup() {
     M5Cardputer.Display.setRotation(1);
     canvas.createSprite(240, 135);
     
-    M5Cardputer.Speaker.setVolume(128);
+    M5Cardputer.Speaker.setVolume(255);
     
     prefs.begin("breach", false);
     highScore = prefs.getInt("highscore", 0);
