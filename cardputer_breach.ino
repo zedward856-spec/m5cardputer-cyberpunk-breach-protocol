@@ -1242,7 +1242,10 @@ void loop() {
     M5Cardputer.update();
     unsigned long now = millis();
     
-    if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
+    bool keyChanged = M5Cardputer.Keyboard.isChange();
+    bool keyPressed = M5Cardputer.Keyboard.isPressed();
+    
+    if (keyChanged && keyPressed) {
         Keyboard_Class::KeysState status = M5Cardputer.Keyboard.keysState();
         bool volChanged = false;
         for (auto i : status.word) {
@@ -1273,7 +1276,7 @@ void loop() {
             lastBlink = now;
             drawSplash();
         }
-        if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
+        if (keyChanged && keyPressed) {
             handleSplashInput(M5Cardputer.Keyboard.keysState());
         }
         delay(10);
@@ -1289,7 +1292,7 @@ void loop() {
     }
     
     if (appState == STATE_AUTH_MENU) {
-        if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
+        if (keyChanged && keyPressed) {
             handleAuthInput(M5Cardputer.Keyboard.keysState());
             if (appState == STATE_AUTH_MENU) drawAuthMenu();
         }
@@ -1298,7 +1301,7 @@ void loop() {
     }
     
     if (appState == STATE_WIFI_SCAN) {
-        if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
+        if (keyChanged && keyPressed) {
             handleWifiScanInput(M5Cardputer.Keyboard.keysState());
             if (appState == STATE_WIFI_SCAN) drawWifiScan();
         }
@@ -1307,7 +1310,7 @@ void loop() {
     }
     
     if (appState == STATE_WIFI_PASS) {
-        if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
+        if (keyChanged && keyPressed) {
             handleWifiPassInput(M5Cardputer.Keyboard.keysState());
             if (appState == STATE_WIFI_PASS) drawWifiPass();
         }
@@ -1316,7 +1319,7 @@ void loop() {
     }
 
     if (appState == STATE_MAIN_MENU) {
-        if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
+        if (keyChanged && keyPressed) {
             handleMainMenuInput(M5Cardputer.Keyboard.keysState());
             if (appState == STATE_MAIN_MENU) drawMainMenu();
         }
@@ -1325,7 +1328,7 @@ void loop() {
     }
 
     if (appState == STATE_LEADERBOARD) {
-        if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
+        if (keyChanged && keyPressed) {
             Keyboard_Class::KeysState status = M5Cardputer.Keyboard.keysState();
             
             bool hasUp = false, hasDown = false;
@@ -1367,7 +1370,7 @@ void loop() {
     }
     
     if (appState == STATE_ACCOUNT) {
-        if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
+        if (keyChanged && keyPressed) {
             handleAccountInput(M5Cardputer.Keyboard.keysState());
             if (appState == STATE_ACCOUNT) drawAccountMenu();
         }
@@ -1376,7 +1379,7 @@ void loop() {
     }
     
     if (appState == STATE_GRID_SELECT) {
-        if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
+        if (keyChanged && keyPressed) {
             handleGridSelectInput(M5Cardputer.Keyboard.keysState());
             if (appState == STATE_GRID_SELECT) drawGridSelect();
         }
@@ -1390,7 +1393,7 @@ void loop() {
             lastBlink = now;
             drawPhaseTransition();
         }
-        if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
+        if (keyChanged && keyPressed) {
             handlePhaseTransitionInput(M5Cardputer.Keyboard.keysState());
             if (appState == STATE_PHASE_TRANSITION) drawPhaseTransition();
         }
@@ -1404,7 +1407,7 @@ void loop() {
             lastBlink = now;
             drawGameOverFailed();
         }
-        if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
+        if (keyChanged && keyPressed) {
             if (M5Cardputer.Keyboard.keysState().enter) {
                 playSound(sound_select, sound_select_size);
                 appState = STATE_MAIN_MENU;
@@ -1452,7 +1455,7 @@ void loop() {
         }
     }
     
-    if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
+    if (keyChanged && keyPressed) {
         Keyboard_Class::KeysState status = M5Cardputer.Keyboard.keysState();
         
         if (gameOver) {
@@ -1573,3 +1576,4 @@ void loop() {
     }
     delay(10);
 }
+
