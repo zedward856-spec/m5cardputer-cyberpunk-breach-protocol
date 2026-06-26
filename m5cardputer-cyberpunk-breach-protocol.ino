@@ -942,11 +942,11 @@ void drawGameOverFailed() {
     canvas.drawCenterString("SYSTEM LOCKED", 120, 30);
     canvas.setTextSize(1);
     canvas.drawCenterString("ALL ACCUMULATED SCORE LOST", 120, 60);
-    uint16_t btnColor = blinkState ? CP_YELLOW : CP_DIM;
+    uint16_t btnColor = blinkState ? CP_RED : CP_DIM;
     drawChippedButton(70, 95, 100, 20, btnColor);
     canvas.setTextColor(btnColor);
     canvas.setTextSize(1);
-    drawGlitchText("PRESS ENTER", 120, 101, 1, CP_CYAN);
+    drawGlitchText("PRESS ENTER", 120, 101, 1, btnColor);
     canvas.pushSprite(0, 0); canvas.endWrite();
 }
 
