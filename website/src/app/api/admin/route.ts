@@ -5,8 +5,9 @@ export async function POST(req: Request) {
     try {
         const { password } = await req.json();
         
-        // Master admin override code
-        if (password !== 'admin2077') {
+        // Master admin override code from environment variable
+        const masterPass = process.env.ADMIN_PASSWORD;
+        if (!masterPass || password !== masterPass) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
