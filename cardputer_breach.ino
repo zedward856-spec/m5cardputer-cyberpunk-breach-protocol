@@ -5,9 +5,11 @@
 #include <vector>
 #include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
+#include <ArduinoOTA.h>
 
 WiFiClientSecure secureClient;
 bool secureClientInit = false;
+bool otaInit = false;
 
 #define API_URL "https://m5cardputer-cyberpunk-breach-protoc.vercel.app/api"
 
@@ -1355,6 +1357,15 @@ void handleAccountInput(Keyboard_Class::KeysState status) {
 }
 
 void loop() {
+    if (WiFi.status() == WL_CONNECTED) {
+        if (!otaInit) {
+            ArduinoOTA.setHostname("Cardputer-Breach");
+            ArduinoOTA.begin();
+            otaInit = true;
+        }
+        ArduinoOTA.handle();
+    }
+
     M5Cardputer.update();
     unsigned long now = millis();
     
