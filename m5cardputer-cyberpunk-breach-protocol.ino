@@ -781,7 +781,7 @@ void drawGridSelect() {
     canvas.setTextColor(CP_DIM);
     canvas.setTextSize(1);
     canvas.setCursor(45, 21);
-    canvas.print(labels[prevIdx] + " - " + descs[prevIdx]);
+    canvas.print(labels[prevIdx] + " " + descs[prevIdx]);
     
     // Draw center item (selected)
     drawChippedButton(40, 52, 195, 30, CP_YELLOW);
@@ -789,9 +789,11 @@ void drawGridSelect() {
     canvas.setTextSize(2);
     canvas.setCursor(55, 59);
     canvas.print(labels[gridMenuFocus]);
+    
+    int labelWidth = canvas.textWidth(labels[gridMenuFocus]);
     canvas.setTextSize(1);
     canvas.setTextColor(WHITE);
-    canvas.setCursor(115, 63);
+    canvas.setCursor(55 + labelWidth + 6, 63); // One size-1 space (6px) away
     canvas.print(descs[gridMenuFocus]);
     
     // Draw next item (bottom)
@@ -799,7 +801,7 @@ void drawGridSelect() {
     canvas.setTextColor(CP_DIM);
     canvas.setTextSize(1);
     canvas.setCursor(45, 105);
-    canvas.print(labels[nextIdx] + " - " + descs[nextIdx]);
+    canvas.print(labels[nextIdx] + " " + descs[nextIdx]);
     
     canvas.pushSprite(0, 0); canvas.endWrite();
 }
