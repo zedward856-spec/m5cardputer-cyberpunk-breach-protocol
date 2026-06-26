@@ -133,6 +133,8 @@ int phaseTimes[] = {34000, 21000, 13000, 8000, 5000, 3000, 2000, 1000};
 int selectedGridSize = 5;
 int phaseMenuFocus = 0;
 int gridMenuFocus = 0;
+float currentGridScroll = 0;
+float targetGridScroll = 0;
 
 int lastPhaseScore = 0;
 float lastTimeRatio = 0.0;
@@ -765,43 +767,57 @@ void drawGridSelect() {
     canvas.drawCircle(-80, 67, 110, CP_DIM);
     canvas.drawCircle(-80, 67, 109, CP_DIM);
     
-    // Draw wheel ticks
-    canvas.fillRect(29, 66, 6, 3, CP_CYAN); // Center selected tick
-    canvas.fillRect(20, 24, 6, 2, CP_DIM);  // Top tick
-    canvas.fillRect(20, 108, 6, 2, CP_DIM); // Bottom tick
-    
     String labels[4] = {"3x3", "4x4", "5x5", "BACK"};
     String descs[4] = {"Base Points Payout", "Higher Points Payout", "Maximum Points Payout", "Return to Menu"};
     
-    int prevIdx = (gridMenuFocus - 1 + 4) % 4;
-    int nextIdx = (gridMenuFocus + 1) % 4;
-    
-    // Draw previous item (top)
-    drawChippedButton(30, 15, 205, 20, CP_DIM);
-    canvas.setTextColor(CP_DIM);
-    canvas.setTextSize(1);
-    canvas.setCursor(45, 21);
-    canvas.print(labels[prevIdx] + " " + descs[prevIdx]);
-    
-    // Draw center item (selected)
-    drawChippedButton(40, 52, 195, 30, CP_YELLOW);
-    canvas.setTextColor(CP_YELLOW);
-    canvas.setTextSize(2);
-    canvas.setCursor(55, 59);
-    canvas.print(labels[gridMenuFocus]);
-    
-    int labelWidth = canvas.textWidth(labels[gridMenuFocus]);
-    canvas.setTextSize(1);
-    canvas.setTextColor(WHITE);
-    canvas.setCursor(55 + labelWidth + 6, 63); // One size-1 space (6px) away
-    canvas.print(descs[gridMenuFocus]);
-    
-    // Draw next item (bottom)
-    drawChippedButton(30, 99, 205, 20, CP_DIM);
-    canvas.setTextColor(CP_DIM);
-    canvas.setTextSize(1);
-    canvas.setCursor(45, 105);
-    canvas.print(labels[nextIdx] + " " + descs[nextIdx]);
+    for (int i = 0; i < 4; i++) {
+        // Calculate shortest wrapping distance for seamless infinite scroll
+        float rawOffset = i - currentGridScroll;
+        float offset = fmod(rawOffset, 4.0);
+        if (offset > 2.0) offset -= 4.0;
+        if (offset < -2.0) offset += 4.0;
+        
+        // Don't draw items too far off screen
+        if (abs(offset) > 1.5) continue;
+        
+        // Calculate tick position on the arc
+        float angle = offset * 0.391; // ~22.4 degrees in radians
+        float tickY = 67 + sin(angle) * 110;
+        float tickX = -80 + cos(angle) * 110;
+        
+        uint16_t tColor = (abs(offset) < 0.2) ? CP_CYAN : CP_DIM;
+        canvas.fillRect(tickX - 1, tickY - 1, 6, (abs(offset) < 0.2 ? 3 : 2), tColor);
+        
+        // Button dynamic properties
+        float h = 30 - abs(offset) * 10;
+        if (h < 1) h = 1;
+        float y = tickY - h / 2.0;
+        float w = 195 + abs(offset) * 10;
+        float x = 40 - abs(offset) * 10;
+        
+        int textSize = (abs(offset) < 0.2) ? 2 : 1;
+        uint16_t color = (abs(offset) < 0.2) ? CP_YELLOW : CP_DIM;
+        
+        drawChippedButton(x, y, w, h, color);
+        
+        canvas.setTextColor(color);
+        canvas.setTextSize(textSize);
+        
+        float textY = y + (abs(offset) < 0.2 ? 7 : 6);
+        float textX = x + 15;
+        canvas.setCursor(textX, textY);
+        canvas.print(labels[i]);
+        
+        if (abs(offset) < 0.2) {
+            int labelWidth = canvas.textWidth(labels[i]);
+            canvas.setTextSize(1);
+            canvas.setTextColor(WHITE);
+            canvas.setCursor(textX + labelWidth + 6, textY + 4); 
+            canvas.print(descs[i]);
+        } else {
+            canvas.print(" " + descs[i]);
+        }
+    }
     
     canvas.pushSprite(0, 0); canvas.endWrite();
 }
@@ -831,8 +847,18 @@ void handleGridSelectInput(Keyboard_Class::KeysState status) {
         if (c == ',' || c == ';') hasUp = true;
         if (c == '/' || c == '.') hasDown = true;
     }
-    if (hasUp) { playSound(sound_hover, sound_hover_size); gridMenuFocus--; if (gridMenuFocus < 0) gridMenuFocus = 3; }
-    if (hasDown) { playSound(sound_hover, sound_hover_size); gridMenuFocus++; if (gridMenuFocus > 3) gridMenuFocus = 0; }
+    if (hasUp) { 
+        playSound(sound_hover, sound_hover_size); 
+        gridMenuFocus--; 
+        if (gridMenuFocus < 0) gridMenuFocus = 3; 
+        targetGridScroll -= 1.0;
+    }
+    if (hasDown) { 
+        playSound(sound_hover, sound_hover_size); 
+        gridMenuFocus++; 
+        if (gridMenuFocus > 3) gridMenuFocus = 0; 
+        targetGridScroll += 1.0;
+    }
 }
 
 void drawPhaseTransition() {
@@ -1616,7 +1642,13 @@ void loop() {
     if (appState == STATE_GRID_SELECT) {
         if (keyChanged && keyPressed) {
             handleGridSelectInput(globalStatus);
-            if (appState == STATE_GRID_SELECT) drawGridSelect();
+        }
+        if (abs(currentGridScroll - targetGridScroll) > 0.01) {
+            currentGridScroll += (targetGridScroll - currentGridScroll) * 0.3; // Smooth lerp
+            if (abs(currentGridScroll - targetGridScroll) <= 0.01) {
+                currentGridScroll = targetGridScroll;
+            }
+            drawGridSelect();
         }
         delay(10);
         return;
