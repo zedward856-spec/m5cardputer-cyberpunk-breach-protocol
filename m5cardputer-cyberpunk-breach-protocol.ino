@@ -745,12 +745,12 @@ void drawGridSelect() {
     canvas.drawCenterString("SELECT GRID SIZE", 120, 5);
     
     int btnW = 232;
-    int btnH = 32;
+    int btnH = 24;
     int startX = 4;
-    int startY = 25;
-    int spacing = 36;
+    int startY = 22;
+    int spacing = 28;
     
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 4; i++) {
         uint16_t c = (gridMenuFocus == i) ? CP_YELLOW : WHITE;
         int y = startY + i * spacing;
         
@@ -758,14 +758,14 @@ void drawGridSelect() {
         
         canvas.setTextColor(c);
         canvas.setTextSize(2);
-        String label = (i == 0) ? "3x3" : ((i == 1) ? "4x4" : "5x5");
-        canvas.setCursor(startX + 15, y + 10);
+        String label = (i == 0) ? "3x3" : ((i == 1) ? "4x4" : ((i == 2) ? "5x5" : "BACK"));
+        canvas.setCursor(startX + 15, y + 5);
         canvas.print(label);
         
         canvas.setTextSize(1);
         canvas.setTextColor(CP_DIM);
-        String desc = (i == 0) ? "Base Points Payout" : ((i == 1) ? "Higher Points Payout" : "Maximum Points Payout");
-        canvas.setCursor(startX + 65, y + 13);
+        String desc = (i == 0) ? "Base Points Payout" : ((i == 1) ? "Higher Points Payout" : ((i == 2) ? "Maximum Points Payout" : "Return to Main Menu"));
+        canvas.setCursor(startX + 80, y + 8);
         canvas.print(desc);
     }
     
@@ -775,6 +775,12 @@ void drawGridSelect() {
 void handleGridSelectInput(Keyboard_Class::KeysState status) {
     if (status.enter) {
         playSound(sound_select, sound_select_size);
+        if (gridMenuFocus == 3) {
+            appState = STATE_MAIN_MENU;
+            drawMainMenu();
+            return;
+        }
+        
         if (gridMenuFocus == 0) selectedGridSize = 3;
         else if (gridMenuFocus == 1) selectedGridSize = 4;
         else selectedGridSize = 5;
@@ -791,8 +797,8 @@ void handleGridSelectInput(Keyboard_Class::KeysState status) {
         if (c == ',' || c == ';') hasUp = true;
         if (c == '/' || c == '.') hasDown = true;
     }
-    if (hasUp) { playSound(sound_hover, sound_hover_size); gridMenuFocus--; if (gridMenuFocus < 0) gridMenuFocus = 2; }
-    if (hasDown) { playSound(sound_hover, sound_hover_size); gridMenuFocus++; if (gridMenuFocus > 2) gridMenuFocus = 0; }
+    if (hasUp) { playSound(sound_hover, sound_hover_size); gridMenuFocus--; if (gridMenuFocus < 0) gridMenuFocus = 3; }
+    if (hasDown) { playSound(sound_hover, sound_hover_size); gridMenuFocus++; if (gridMenuFocus > 3) gridMenuFocus = 0; }
 }
 
 void drawPhaseTransition() {
