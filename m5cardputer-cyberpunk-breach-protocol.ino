@@ -682,7 +682,7 @@ void drawMainMenu() {
     
     uint16_t colorPlay = (mainMenuFocus == 0) ? CP_YELLOW : WHITE;
     drawChippedButton(70, 60, 100, 20, colorPlay);
-    drawGlitchText("HACK", 120, 65, 1, colorPlay);
+    drawGlitchText("BREACH PROTOCOL", 120, 65, 1, colorPlay);
     
     if (!isGuest) {
         uint16_t colorLDB = (mainMenuFocus == 1) ? CP_YELLOW : WHITE;
