@@ -20,6 +20,14 @@ A perfectly faithful, standalone port of the iconic Cyberpunk 2077 Breach Protoc
 - **Custom Backend Architecture:** Integrates seamlessly with an external Next.js backend for high-speed score transmission.
 *(Note: Server/Backend website source files are deliberately kept private as per project requirements. The `API_URL` macro can be updated to point to your own compatible REST API.)*
 
+## What's New in v7.0 (Reborn Release)
+- **Persistent Settings:** Your preferred volume and screen backlight brightness levels are stored in flash preferences memory and restored automatically on boot.
+- **Adjustable Screen Backlight:** Press `[` and `]` to adjust screen brightness from 5% to 100% with fading overlay popups.
+- **Subtle Matrix Rain Transitions:** Seamless Cyberpunk matrix digital rain falling animations play during menu grid selection transitions and game over loops.
+- **Cyberdeck Schematic Menu:** Added a minimal, fully-capitalized input controls schematic screen directly accessible from the rotating wheel menu.
+- **System Credits Panel:** Honors CD Projekt Red for core designs and developer sl01220 (15yo developer) for porting & coding the firmware.
+- **Enhanced Font Rendering:** All main menu descriptions have been upgraded to size 2 two-line card layouts.
+
 ## Installation
 You can flash the provided firmware directly to your M5Cardputer using M5Burner or `esptool`.
 
