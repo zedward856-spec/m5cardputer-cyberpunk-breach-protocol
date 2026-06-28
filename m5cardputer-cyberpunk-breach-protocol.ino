@@ -1105,7 +1105,7 @@ void drawMainMenu() {
             else if (label == "LEADERBOARD") descText = "DATABANK: View global scores";
             else if (label == "ACCOUNT") descText = "ACCOUNT: Operative profile";
             else if (label == "CONTROLS") descText = "CONTROLS: Keyboard bindings";
-            else if (label == "CREDITS") descText = "CREDITS: System developers & rights";
+            else if (label == "CREDITS") descText = "CREDITS: System developers";
             canvas.print(descText);
         }
     }
