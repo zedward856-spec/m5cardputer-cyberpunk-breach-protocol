@@ -722,6 +722,8 @@ void drawMainMenu() {
         // Don't draw items too far off screen
         if (abs(offset) > 1.5) continue;
         
+        if (offset < -0.5) continue;
+        
         // Calculate tick position on the arc
         float angle = offset * 0.391; // ~22.4 degrees in radians
         float tickY = 67 + sin(angle) * 110;
@@ -885,6 +887,8 @@ void drawGridSelect() {
         
         // Don't draw items too far off screen
         if (abs(offset) > 1.5) continue;
+        
+        if (offset < -0.5) continue;
         
         // Calculate tick position on the arc
         float angle = offset * 0.391; // ~22.4 degrees in radians
