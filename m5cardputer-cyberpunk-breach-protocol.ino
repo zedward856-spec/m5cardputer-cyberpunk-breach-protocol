@@ -714,9 +714,21 @@ void drawHardwareMenu() {
     canvas.startWrite();
     canvas.fillScreen(CP_BG);
     
+    // Draw booting logs in background
+    int maxLogs = 7;
+    int y = 35;
+    canvas.setTextColor(CP_ACTIVE_LINE);
+    canvas.setTextSize(1);
+    for (int i = 0; i < maxLogs; i++) {
+        int logIdx = (logOffset + i) % dummyLogs.size();
+        canvas.setCursor(5, y);
+        canvas.print(dummyLogs[logIdx]);
+        y += 11;
+    }
+    
     // Draw title
     drawGlitchText("HARDWARE NODE", 135, 12, 2, CP_CYAN, true, true);
-    drawGlitchText("SUB-SYSTEM LEVEL 1", 135, 34, 1, CP_DIM);
+    drawGlitchText("OPERATIVE: " + (isGuest ? String("GUEST") : authUser), 135, 34, 1, CP_DIM);
     
     // Draw rotating wheel arc
     canvas.drawCircle(-80, 67, 110, CP_DIM);
@@ -748,7 +760,7 @@ void drawHardwareMenu() {
             canvas.drawLine(tickX, tickY + 1, tickEndX, tickEndY + 1, tColor);
         }
         
-        float scale = 1.0 - abs(offset) * 0.2;
+        float scale = 1.0 - abs(offset) * 0.3333;
         if (scale < 0.1) scale = 0.1;
         float h = 30.0 * scale;
         float y = tickY - h / 2.0;
