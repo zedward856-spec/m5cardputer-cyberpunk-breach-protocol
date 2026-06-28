@@ -1101,11 +1101,11 @@ void drawMainMenu() {
             canvas.setCursor(x + 10, y + 11);
             String descText = "";
             String label = labels[mainMenuFocus];
-            if (label == "HACK") descText = "HACK: Access subnet gateways";
-            else if (label == "LEADERBOARD") descText = "DATABANK: View global scores";
-            else if (label == "ACCOUNT") descText = "ACCOUNT: Operative profile";
-            else if (label == "CONTROLS") descText = "CONTROLS: Keyboard bindings";
-            else if (label == "CREDITS") descText = "CREDITS: System developers";
+            if (label == "HACK") descText = "Access subnet gateways";
+            else if (label == "LEADERBOARD") descText = "View global scores";
+            else if (label == "ACCOUNT") descText = "Operative profile";
+            else if (label == "CONTROLS") descText = "Keyboard bindings";
+            else if (label == "CREDITS") descText = "System developers";
             canvas.print(descText);
         }
     }
