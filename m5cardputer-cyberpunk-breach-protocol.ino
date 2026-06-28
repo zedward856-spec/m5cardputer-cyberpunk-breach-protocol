@@ -723,10 +723,14 @@ void drawHardwareMenu() {
     canvas.drawCircle(-80, 67, 109, CP_DIM);
     
     int totalItems = 3;
-    std::vector<String> labels = {"FLASH MEM", "SD CARD", "BACK"};
+    std::vector<String> labels = {"FLASH MEMORY", "SD CARD", "BACK"};
     
     for (int i = 0; i < totalItems; i++) {
-        float offset = i - currentHardwareScroll;
+        float rawOffset = i - currentHardwareScroll;
+        float offset = fmod(rawOffset, (float)totalItems);
+        float halfItems = (float)totalItems / 2.0;
+        if (offset > halfItems) offset -= (float)totalItems;
+        if (offset < -halfItems) offset += (float)totalItems;
         
         float angle = offset * 0.391;
         float tickY = 67 + sin(angle) * 110;
@@ -776,7 +780,7 @@ void drawHardwareMenu() {
             String label = labels[hardwareMenuFocus];
             String line1 = "";
             String line2 = "";
-            if (label == "FLASH MEM") {
+            if (label == "FLASH MEMORY") {
                 line1 = "Flash";
                 line2 = "memory";
             } else if (label == "SD CARD") {
@@ -857,13 +861,13 @@ void handleHardwareMenuInput(Keyboard_Class::KeysState status) {
             playSound(sound_hover, sound_hover_size);
             hardwareMenuFocus--;
             if (hardwareMenuFocus < 0) hardwareMenuFocus = maxFocus;
-            targetHardwareScroll = (float)hardwareMenuFocus;
+            targetHardwareScroll -= 1.0;
         }
         if (hasDown) {
             playSound(sound_hover, sound_hover_size);
             hardwareMenuFocus++;
             if (hardwareMenuFocus > maxFocus) hardwareMenuFocus = 0;
-            targetHardwareScroll = (float)hardwareMenuFocus;
+            targetHardwareScroll += 1.0;
         }
     }
 }
