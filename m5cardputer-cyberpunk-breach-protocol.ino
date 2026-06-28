@@ -88,8 +88,7 @@ enum AppState {
     STATE_GRID_SELECT,
     STATE_PHASE_TRANSITION,
     STATE_FAILED_SCREEN,
-    STATE_PLAYING,
-    STATE_TERMINAL_SCAN
+    STATE_PLAYING
 };
 AppState appState = STATE_SPLASH;
 
@@ -167,8 +166,6 @@ void drawVolumeOverlay();
 void pushCanvas();
 void drawCurrentScreen();
 void playTerminalConnectAnimation(bool isGuestAuth);
-void drawTerminalScan();
-void handleTerminalScanInput(Keyboard_Class::KeysState status);
 void playMatrixRainTransition();
 
 void drawMessage(String msg, String line2 = "");
@@ -329,7 +326,6 @@ void drawCurrentScreen() {
         case STATE_PHASE_TRANSITION: drawPhaseTransition(); break;
         case STATE_FAILED_SCREEN: drawGameOverFailed(); break;
         case STATE_PLAYING: drawScreen(); break;
-        case STATE_TERMINAL_SCAN: drawTerminalScan(); break;
     }
 }
 
@@ -374,46 +370,7 @@ void playTerminalConnectAnimation(bool isGuestAuth) {
     delay(500);
 }
 
-void drawTerminalScan() {
-    canvas.startWrite();
-    canvas.fillScreen(CP_BG);
-    
-    canvas.setTextColor(CP_YELLOW);
-    canvas.setTextSize(1);
-    canvas.drawString("=====================================", 10, 5);
-    canvas.drawString("      TERMINAL UPLINK ESTABLISHED    ", 10, 15);
-    canvas.drawString("=====================================", 10, 25);
-    
-    canvas.setTextColor(CP_CYAN);
-    canvas.drawString("ACCESS NODE  :", 15, 45);
-    canvas.drawString("MAC ADDRESS  :", 15, 60);
-    canvas.drawString("OPERATIVE    :", 15, 75);
-    canvas.drawString("INSANE MODE  :", 15, 90);
-    
-    canvas.setTextColor(WHITE);
-    String nodeSSID = WiFi.status() == WL_CONNECTED ? WiFi.SSID() : "OFFLINE_LINK";
-    String nodeMAC = WiFi.status() == WL_CONNECTED ? WiFi.BSSIDstr() : WiFi.macAddress();
-    nodeMAC.toUpperCase();
-    String opName = isGuest ? "GUEST_OPERATIVE" : authUser;
-    String insaneStr = insaneMode ? "ACTIVE (HIGH SECURITY)" : "DEACTIVATED";
-    
-    canvas.drawString(nodeSSID, 105, 45);
-    canvas.drawString(nodeMAC, 105, 60);
-    canvas.drawString(opName, 105, 75);
-    canvas.drawString(insaneStr, 105, 90);
-    
-    canvas.setTextColor(CP_YELLOW);
-    canvas.drawCenterString("PRESS ENTER TO ENTER NETWORK NODE", 120, 115);
-    
-    pushCanvas();
-}
 
-void handleTerminalScanInput(Keyboard_Class::KeysState status) {
-    if (status.enter) {
-        playSound(sound_select, sound_select_size);
-        enterMainMenu();
-    }
-}
 
 void playMatrixRainTransition() {
     int cols = 15;
@@ -566,8 +523,7 @@ void handleSplashInput(Keyboard_Class::KeysState status) {
         isGuest = true;
         authUser = "GUEST";
         playTerminalConnectAnimation(true);
-        appState = STATE_TERMINAL_SCAN;
-        drawTerminalScan();
+        enterMainMenu();
     }
 }
 
@@ -582,8 +538,7 @@ void startWifiScan() {
         }
         if (WiFi.status() == WL_CONNECTED) {
             playTerminalConnectAnimation(false);
-            appState = STATE_TERMINAL_SCAN;
-            drawTerminalScan();
+            enterMainMenu();
             return;
         }
     }
@@ -750,8 +705,7 @@ void handleAuthInput(Keyboard_Class::KeysState status) {
                 
                 isGuest = false;
                 playTerminalConnectAnimation(false);
-                appState = STATE_TERMINAL_SCAN;
-                drawTerminalScan();
+                enterMainMenu();
             } else {
                 http.end();
                 drawMessage("ACCESS DENIED");
@@ -763,8 +717,7 @@ void handleAuthInput(Keyboard_Class::KeysState status) {
             isGuest = true;
             playSound(wifi_finished_wav, wifi_finished_wav_len);
             playTerminalConnectAnimation(true);
-            appState = STATE_TERMINAL_SCAN;
-            drawTerminalScan();
+            enterMainMenu();
             return;
         }
         authFocus++;
@@ -857,8 +810,7 @@ void handleWifiScanInput(Keyboard_Class::KeysState status) {
             isGuest = true;
             authUser = "GUEST";
             playTerminalConnectAnimation(true);
-            appState = STATE_TERMINAL_SCAN;
-            drawTerminalScan();
+            enterMainMenu();
             return;
         }
         appState = STATE_WIFI_PASS;
@@ -2023,15 +1975,6 @@ void loop() {
         return;
     }
     
-    if (appState == STATE_TERMINAL_SCAN) {
-        if (keyChanged && keyPressed) {
-            handleTerminalScanInput(globalStatus);
-            if (appState == STATE_TERMINAL_SCAN) drawTerminalScan();
-        }
-        delay(10);
-        return;
-    }
-
     if (insaneMode) {
         static unsigned long lastInsane = 0;
         static unsigned long nextInsane = 500;
