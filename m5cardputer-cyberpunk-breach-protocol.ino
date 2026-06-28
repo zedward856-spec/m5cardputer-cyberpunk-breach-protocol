@@ -207,7 +207,7 @@ void drawCreditsScreen();
 void handleCreditsInput(Keyboard_Class::KeysState status);
 void drawHardwareMenu();
 void handleHardwareMenuInput(Keyboard_Class::KeysState status);
-void drawFileManager();
+void drawFileManager(bool push = true);
 void handleFileManagerInput(Keyboard_Class::KeysState status);
 void drawFileLoading();
 void drawHardwareSettings();
@@ -1147,7 +1147,7 @@ void handleHardwareSettingsInput(Keyboard_Class::KeysState status) {
     }
 }
 
-void drawFileManager() {
+void drawFileManager(bool push) {
     canvas.startWrite();
     canvas.fillScreen(CP_BG);
     
@@ -1246,7 +1246,9 @@ void drawFileManager() {
         canvas.drawCenterString("PRESS COMMA OR ESC TO CLOSE", 120, 114);
     }
     
-    pushCanvas();
+    if (push) {
+        pushCanvas();
+    }
 }
 
 void handleFileManagerInput(Keyboard_Class::KeysState status) {
@@ -1347,7 +1349,7 @@ void handleFileManagerInput(Keyboard_Class::KeysState status) {
 
 void drawFileActionsMenu() {
     // First, draw the file manager background behind the pop-up menu!
-    drawFileManager();
+    drawFileManager(false);
     
     // Draw pop-up overlay
     canvas.startWrite();
@@ -1575,7 +1577,7 @@ void handleFileActionsMenuInput(Keyboard_Class::KeysState status) {
 
 void drawFileRenameInput() {
     // First, draw the file manager background behind the rename dialog!
-    drawFileManager();
+    drawFileManager(false);
     
     // Draw dialog overlay
     canvas.startWrite();
