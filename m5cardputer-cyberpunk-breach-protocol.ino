@@ -591,9 +591,8 @@ void drawSplash() {
         y += 11;
     }
 
-    canvas.fillRect(125, 40, 115, 30, CP_BG);
-    
-    canvas.setCursor(125, 40);
+    canvas.setTextSize(1);
+    canvas.setCursor(10, 24);
     if (WiFi.status() == WL_CONNECTED) {
         canvas.setTextColor(CP_YELLOW);
         canvas.print("WIFI: CONNECTED");
@@ -603,7 +602,7 @@ void drawSplash() {
     }
     
     canvas.setTextColor(CP_YELLOW);
-    canvas.setCursor(125, 60);
+    canvas.setCursor(116, 24);
     canvas.print("VERSION: v7.0reborn");
     
     canvas.setTextSize(1);
