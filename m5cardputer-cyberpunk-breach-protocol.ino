@@ -564,6 +564,10 @@ int hardwareMenuFocus = 0;
 bool showHardwareDesc = false;
 float hardwareDescAnimWidth = 0.0;
 
+bool isSDCardManager = false;
+int fileManagerSelected = 0;
+bool showFileContent = false;
+
 struct RealFile {
     String name;
     String sizeStr;
@@ -705,10 +709,6 @@ void readSelectedFileContent(String fileName) {
         f.close();
     }
 }
-
-bool isSDCardManager = false;
-int fileManagerSelected = 0;
-bool showFileContent = false;
 
 void drawHardwareMenu() {
     canvas.startWrite();
