@@ -34,5 +34,10 @@ You can flash the provided firmware directly to your M5Cardputer using M5Burner 
 2. Flash the binary to address `0x0` on your ESP32-S3 (M5Cardputer).
 
 ## Controls
-- **W, A, S, D** or **Arrow Keys (via Fn + /, ;, ., ,)**: Move the cursor along the active line.
-- **ENTER**: Select the highlighted node, or restart the game upon game over.
+- **NAVIGATE / SCROLL:** `;` (UP) / `.` (DOWN) or `ARROW_KEYS` (via Fn + `;`, `.`)
+- **SELECT / CONFIRM:** `/` or `ENTER`
+- **CANCEL / GO BACK:** `,` or `ESC` (Backtick `` ` `` key)
+- **VOLUME CONTROL:** `-` / `+` (Adjusts volume in steps of 5%)
+- **BRIGHTNESS CONTROL:** `[` / `]` (Adjusts LCD backlight in steps of 5%)
+- **TEXT DELETE:** `BACKSPACE`
+- **MATRIX GRID SELECT:** `;` (UP) / `.` (DOWN) or `ARROW_KEYS` to scroll; `ESC` to go back; `ENTER` to select.
