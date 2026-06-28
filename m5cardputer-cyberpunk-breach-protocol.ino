@@ -7,9 +7,24 @@
 #include <SPI.h>
 #include <HTTPClient.h>
 #include <vector>
+#include <algorithm>
 #include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
 #include <ArduinoOTA.h>
+
+struct RealFile {
+    String name;
+    String sizeStr;
+    bool isDir;
+};
+
+enum SortMode {
+    SORT_NAME_ASC,
+    SORT_NAME_DESC,
+    SORT_TYPE_ASC,
+    SORT_TYPE_DESC
+};
+SortMode currentSortMode = SORT_NAME_ASC;
 
 WiFiClientSecure secureClient;
 bool secureClientInit = false;
@@ -98,7 +113,8 @@ enum AppState {
     STATE_CREDITS,
     STATE_HARDWARE_MENU,
     STATE_FILE_MANAGER,
-    STATE_FILE_LOADING
+    STATE_FILE_LOADING,
+    STATE_HARDWARE_SETTINGS
 };
 AppState appState = STATE_SPLASH;
 
@@ -189,6 +205,8 @@ void handleHardwareMenuInput(Keyboard_Class::KeysState status);
 void drawFileManager();
 void handleFileManagerInput(Keyboard_Class::KeysState status);
 void drawFileLoading();
+void drawHardwareSettings();
+void handleHardwareSettingsInput(Keyboard_Class::KeysState status);
 
 void drawMessage(String msg, String line2 = "");
 void drawGlitchText(String text, int x, int y, int size, uint16_t color, bool center = true, bool forceGlitch = false) {
@@ -427,6 +445,7 @@ void drawCurrentScreen() {
         case STATE_HARDWARE_MENU: drawHardwareMenu(); break;
         case STATE_FILE_MANAGER: drawFileManager(); break;
         case STATE_FILE_LOADING: drawFileLoading(); break;
+        case STATE_HARDWARE_SETTINGS: drawHardwareSettings(); break;
     }
 }
 
@@ -600,15 +619,33 @@ std::vector<String> dummyLogs = {
 int logOffset = 0;
 unsigned long lastLogUpdate = 0;
 
-struct RealFile {
-    String name;
-    String sizeStr;
-    bool isDir;
-};
 std::vector<RealFile> loadedFiles;
 String fsStatusMessage = "";
 std::vector<String> openedFileContent;
 String openedFileName = "";
+
+bool compareFiles(const RealFile& a, const RealFile& b) {
+    String aName = a.name;
+    String bName = b.name;
+    aName.toLowerCase();
+    bName.toLowerCase();
+    
+    if (currentSortMode == SORT_NAME_ASC) {
+        return aName < bName;
+    } else if (currentSortMode == SORT_NAME_DESC) {
+        return aName > bName;
+    } else if (currentSortMode == SORT_TYPE_ASC) {
+        if (a.isDir != b.isDir) {
+            return a.isDir > b.isDir; // Directory first
+        }
+        return aName < bName;
+    } else { // SORT_TYPE_DESC
+        if (a.isDir != b.isDir) {
+            return a.isDir < b.isDir; // Files first
+        }
+        return aName < bName;
+    }
+}
 
 void populateFileList() {
     loadedFiles.clear();
@@ -635,34 +672,33 @@ void populateFileList() {
             loadedFiles.push_back(f2);
             loadedFiles.push_back(f3);
             if (root) root.close();
-            return;
-        }
-        
-        File file = root.openNextFile();
-        while (file && loadedFiles.size() < 100) {
-            RealFile rf;
-            rf.name = String(file.name());
-            if (rf.name.startsWith("/")) rf.name.remove(0, 1);
-            
-            rf.isDir = file.isDirectory();
-            if (rf.isDir) {
-                rf.sizeStr = "DIR";
-            } else {
-                rf.sizeStr = String(file.size() / 1024.0, 1) + " KB";
+        } else {
+            File file = root.openNextFile();
+            while (file && loadedFiles.size() < 100) {
+                RealFile rf;
+                rf.name = String(file.name());
+                if (rf.name.startsWith("/")) rf.name.remove(0, 1);
+                
+                rf.isDir = file.isDirectory();
+                if (rf.isDir) {
+                    rf.sizeStr = "DIR";
+                } else {
+                    rf.sizeStr = String(file.size() / 1024.0, 1) + " KB";
+                }
+                loadedFiles.push_back(rf);
+                file = root.openNextFile();
             }
-            loadedFiles.push_back(rf);
-            file = root.openNextFile();
-        }
-        root.close();
-        if (loadedFiles.empty()) {
-            isSDFallback = true;
-            fsStatusMessage = "SD CARD EMPTY (DEMO ACTIVE)";
-            RealFile f1 = {"credentials.txt", "0.1 KB", false};
-            RealFile f2 = {"subnet_node.sh", "0.1 KB", false};
-            RealFile f3 = {"payload.bin", "1.2 KB", false};
-            loadedFiles.push_back(f1);
-            loadedFiles.push_back(f2);
-            loadedFiles.push_back(f3);
+            root.close();
+            if (loadedFiles.empty()) {
+                isSDFallback = true;
+                fsStatusMessage = "SD CARD EMPTY (DEMO ACTIVE)";
+                RealFile f1 = {"credentials.txt", "0.1 KB", false};
+                RealFile f2 = {"subnet_node.sh", "0.1 KB", false};
+                RealFile f3 = {"payload.bin", "1.2 KB", false};
+                loadedFiles.push_back(f1);
+                loadedFiles.push_back(f2);
+                loadedFiles.push_back(f3);
+            }
         }
     } else {
         bool mountSuccess = SPIFFS.begin(true);
@@ -681,35 +717,39 @@ void populateFileList() {
             loadedFiles.push_back(f2);
             loadedFiles.push_back(f3);
             if (root) root.close();
-            return;
-        }
-        
-        File file = root.openNextFile();
-        while (file && loadedFiles.size() < 100) {
-            RealFile rf;
-            rf.name = String(file.name());
-            if (rf.name.startsWith("/")) rf.name.remove(0, 1);
-            
-            rf.isDir = file.isDirectory();
-            if (rf.isDir) {
-                rf.sizeStr = "DIR";
-            } else {
-                rf.sizeStr = String(file.size() / 1024.0, 1) + " KB";
+        } else {
+            File file = root.openNextFile();
+            while (file && loadedFiles.size() < 100) {
+                RealFile rf;
+                rf.name = String(file.name());
+                if (rf.name.startsWith("/")) rf.name.remove(0, 1);
+                
+                rf.isDir = file.isDirectory();
+                if (rf.isDir) {
+                    rf.sizeStr = "DIR";
+                } else {
+                    rf.sizeStr = String(file.size() / 1024.0, 1) + " KB";
+                }
+                loadedFiles.push_back(rf);
+                file = root.openNextFile();
             }
-            loadedFiles.push_back(rf);
-            file = root.openNextFile();
+            root.close();
+            if (loadedFiles.empty()) {
+                isFlashFallback = true;
+                fsStatusMessage = "FLASH EMPTY (DEMO ACTIVE)";
+                RealFile f1 = {"deck_config.json", "0.1 KB", false};
+                RealFile f2 = {"breach_log.txt", "0.1 KB", false};
+                RealFile f3 = {"system.ini", "0.1 KB", false};
+                loadedFiles.push_back(f1);
+                loadedFiles.push_back(f2);
+                loadedFiles.push_back(f3);
+            }
         }
-        root.close();
-        if (loadedFiles.empty()) {
-            isFlashFallback = true;
-            fsStatusMessage = "FLASH EMPTY (DEMO ACTIVE)";
-            RealFile f1 = {"deck_config.json", "0.1 KB", false};
-            RealFile f2 = {"breach_log.txt", "0.1 KB", false};
-            RealFile f3 = {"system.ini", "0.1 KB", false};
-            loadedFiles.push_back(f1);
-            loadedFiles.push_back(f2);
-            loadedFiles.push_back(f3);
-        }
+    }
+    
+    // Sort files based on settings
+    if (!loadedFiles.empty()) {
+        std::sort(loadedFiles.begin(), loadedFiles.end(), compareFiles);
     }
 }
 
@@ -811,7 +851,6 @@ void drawHardwareMenu() {
     canvas.startWrite();
     canvas.fillScreen(CP_BG);
     
-
     // Draw title
     drawGlitchText("HARDWARE NODE", 135, 12, 2, CP_CYAN, true, true);
     drawGlitchText("OPERATIVE: " + (isGuest ? String("GUEST") : authUser), 135, 34, 1, CP_DIM);
@@ -820,8 +859,8 @@ void drawHardwareMenu() {
     canvas.drawCircle(-80, 67, 110, CP_DIM);
     canvas.drawCircle(-80, 67, 109, CP_DIM);
     
-    int totalItems = 3;
-    std::vector<String> labels = {"FLASH MEMORY", "SD CARD", "BACK"};
+    int totalItems = 4;
+    std::vector<String> labels = {"FLASH MEMORY", "SD CARD", "SETTINGS", "BACK"};
     
     for (int i = 0; i < totalItems; i++) {
         float rawOffset = i - currentHardwareScroll;
@@ -886,6 +925,9 @@ void drawHardwareMenu() {
             } else if (label == "SD CARD") {
                 line1 = "SD card";
                 line2 = "storage";
+            } else if (label == "SETTINGS") {
+                line1 = "Sorting";
+                line2 = "preferences";
             } else if (label == "BACK") {
                 line1 = "Return to";
                 line2 = "terminal";
@@ -922,7 +964,7 @@ void handleHardwareMenuInput(Keyboard_Class::KeysState status) {
             return;
         }
     } else {
-        if (hasRight && (hardwareMenuFocus == 0 || hardwareMenuFocus == 1)) {
+        if (hasRight && (hardwareMenuFocus == 0 || hardwareMenuFocus == 1 || hardwareMenuFocus == 2)) {
             playSound(sound_select, sound_select_size);
             showHardwareDesc = true;
             return;
@@ -945,6 +987,9 @@ void handleHardwareMenuInput(Keyboard_Class::KeysState status) {
             loadingProgress = 0;
             showFileContent = false;
         } else if (hardwareMenuFocus == 2) {
+            appState = STATE_HARDWARE_SETTINGS;
+            drawHardwareSettings();
+        } else if (hardwareMenuFocus == 3) {
             appState = STATE_SPLASH;
             drawSplash();
         }
@@ -952,7 +997,7 @@ void handleHardwareMenuInput(Keyboard_Class::KeysState status) {
     }
     
     if (!showHardwareDesc) {
-        int maxFocus = 2;
+        int maxFocus = 3;
         if (hasUp) {
             playSound(sound_hover, sound_hover_size);
             hardwareMenuFocus--;
@@ -965,6 +1010,87 @@ void handleHardwareMenuInput(Keyboard_Class::KeysState status) {
             if (hardwareMenuFocus > maxFocus) hardwareMenuFocus = 0;
             targetHardwareScroll += 1.0;
         }
+    }
+}
+
+void drawHardwareSettings() {
+    canvas.startWrite();
+    canvas.fillScreen(CP_BG);
+    
+    canvas.drawRect(5, 5, 230, 125, CP_CYAN);
+    canvas.drawRect(7, 7, 226, 121, CP_DIM);
+    
+    canvas.setTextColor(CP_YELLOW);
+    canvas.setTextSize(1);
+    canvas.drawCenterString("--- SORT SETTINGS SCHEMA ---", 120, 12);
+    canvas.drawLine(10, 24, 230, 24, CP_CYAN);
+    
+    // Display options
+    canvas.setTextColor(CP_CYAN);
+    canvas.drawCenterString("CHOOSE FILE SORTING MODE:", 120, 45);
+    
+    // Selected option Chip
+    canvas.fillRect(15, 68, 210, 20, canvas.color565(30, 30, 30));
+    canvas.drawRect(15, 68, 210, 20, CP_CYAN);
+    
+    canvas.setTextColor(CP_YELLOW);
+    String modeText = "";
+    if (currentSortMode == SORT_NAME_ASC) modeText = "< NAME ASCENDING (A-Z) >";
+    else if (currentSortMode == SORT_NAME_DESC) modeText = "< NAME DESCENDING (Z-A) >";
+    else if (currentSortMode == SORT_TYPE_ASC) modeText = "< TYPE (DIR FIRST) >";
+    else if (currentSortMode == SORT_TYPE_DESC) modeText = "< TYPE (FILES FIRST) >";
+    
+    canvas.drawCenterString(modeText, 120, 74);
+    
+    canvas.setTextColor(CP_DIM);
+    canvas.drawCenterString("USE LEFT/RIGHT KEYS TO CYCLE", 120, 98);
+    canvas.setTextColor(CP_YELLOW);
+    canvas.drawCenterString("ENTER: APPLY  |  ESC/COMMA: BACK", 120, 114);
+    
+    pushCanvas();
+}
+
+void handleHardwareSettingsInput(Keyboard_Class::KeysState status) {
+    bool hasBack = false;
+    for (char c : status.word) {
+        if (c == ',' || c == '`') hasBack = true;
+    }
+    
+    if (hasBack) {
+        playSound(sound_select, sound_select_size);
+        appState = STATE_HARDWARE_MENU;
+        drawHardwareMenu();
+        return;
+    }
+    
+    if (status.enter) {
+        playSound(sound_select, sound_select_size);
+        appState = STATE_HARDWARE_MENU;
+        drawHardwareMenu();
+        return;
+    }
+    
+    bool hasLeft = false, hasRight = false;
+    for (char c : status.word) {
+        if (c == ';') hasLeft = true;
+        if (c == '.') hasRight = true;
+        if (c == ',') hasLeft = true;
+        if (c == '/') hasRight = true;
+    }
+    
+    if (hasLeft) {
+        playSound(sound_hover, sound_hover_size);
+        int mode = (int)currentSortMode - 1;
+        if (mode < 0) mode = 3;
+        currentSortMode = (SortMode)mode;
+        drawHardwareSettings();
+    }
+    if (hasRight) {
+        playSound(sound_hover, sound_hover_size);
+        int mode = (int)currentSortMode + 1;
+        if (mode > 3) mode = 0;
+        currentSortMode = (SortMode)mode;
+        drawHardwareSettings();
     }
 }
 
@@ -1005,18 +1131,40 @@ void drawFileManager() {
                 uint16_t color = isSel ? CP_YELLOW : WHITE;
                 
                 if (isSel) {
-                    canvas.fillRect(10, startY - 2, 220, 14, canvas.color565(30, 30, 30));
-                    canvas.drawRect(10, startY - 2, 220, 14, CP_CYAN);
+                    canvas.fillRect(10, startY - 2, 210, 14, canvas.color565(30, 30, 30));
+                    canvas.drawRect(10, startY - 2, 210, 14, CP_CYAN);
                 }
                 
                 canvas.setTextColor(color);
                 canvas.setCursor(15, startY);
-                canvas.print(loadedFiles[fileIdx].name);
                 
-                canvas.setCursor(170, startY);
+                // Truncate name if it's too long to fit with the scrollbar
+                String nameToPrint = loadedFiles[fileIdx].name;
+                if (nameToPrint.length() > 18) {
+                    nameToPrint = nameToPrint.substring(0, 15) + "...";
+                }
+                canvas.print(nameToPrint);
+                
+                canvas.setCursor(155, startY);
                 canvas.print(loadedFiles[fileIdx].sizeStr);
                 
                 startY += 14;
+            }
+            
+            // Draw vertical scrollbar on the right side (x = 224)
+            int totalFiles = loadedFiles.size();
+            int trackY = fsStatusMessage != "" ? 42 : 32;
+            int trackH = fsStatusMessage != "" ? 66 : 70;
+            canvas.drawFastVLine(224, trackY, trackH, CP_DIM);
+            if (totalFiles > 5) {
+                int barH = (trackH * 5) / totalFiles;
+                if (barH < 10) barH = 10;
+                int scrollRange = totalFiles - 5;
+                int trackRange = trackH - barH;
+                int barY = trackY + (fileManagerScrollOffset * trackRange) / scrollRange;
+                canvas.fillRect(223, barY, 3, barH, CP_CYAN);
+            } else if (totalFiles > 0) {
+                canvas.fillRect(223, trackY, 3, trackH, CP_CYAN);
             }
         }
         
@@ -2942,6 +3090,14 @@ void loop() {
             drawHardwareMenu();
         }
         
+        delay(10);
+        return;
+    }
+    
+    if (appState == STATE_HARDWARE_SETTINGS) {
+        if (keyChanged && keyPressed) {
+            handleHardwareSettingsInput(globalStatus);
+        }
         delay(10);
         return;
     }
