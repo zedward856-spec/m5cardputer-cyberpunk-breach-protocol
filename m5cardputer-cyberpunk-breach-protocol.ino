@@ -566,7 +566,7 @@ struct MockFile {
     String content[4];
 };
 
-MockFile mockFiles[5] = {
+MockFile flashFiles[5] = {
     {"deck_firmware.bin", "128 KB", {"DECK CORE V7.0", "BOOT STRAP: LOADED", "SECTORS: OK", "CRC CHECK: SUCCESS"}},
     {"subnet_config.json", "1.2 KB", {"{", "  \"node_id\": \"BP_X1\",", "  \"security\": \"LEVEL_3\",", "  \"encryption\": \"AES256\""}},
     {"icebreaker.sys", "4.0 KB", {"ICEBREAKER SYSTEM", "DEC_KEY: 0x55BD", "SUB_CORE: ONLINE", "STATUS: LOCKED"}},
@@ -574,6 +574,15 @@ MockFile mockFiles[5] = {
     {"system_core.db", "64 KB", {"SYS MEM DUMP:", "0x00FF: 42 1C 55", "0x01A0: BD E9 FF", "MEM_INTEGRITY: 100%"}}
 };
 
+MockFile sdFiles[5] = {
+    {"cyber_track.wav", "2.4 MB", {"AUDIO SAMPLE RATE", "FREQ: 44100 Hz", "CHANNELS: STEREO", "STATUS: BUFFERED"}},
+    {"payload.sh", "0.8 KB", {"#!/bin/bash", "echo \"INITIALIZING INTRUSION...\"", "curl -X POST /api/breach", "exit 0"}},
+    {"hacker_bg.png", "45 KB", {"IMAGE DATA DUMP", "DIMENSIONS: 240x135", "COLORS: RGB565", "COMPRESSION: NONE"}},
+    {"session.dat", "1.5 KB", {"SAVE STATE DATA:", "LEVEL: SUBNET_C4", "ENCRYPTION: ACTIVE", "KEY_COUNT: 4"}},
+    {"auth_keys.key", "0.2 KB", {"PEM PRIVATE KEY:", "---BEGIN PRIVATE---", "MIIEvgIBADANBgkqhki", "---END PRIVATE---"}}
+};
+
+bool isSDCardManager = false;
 int fileManagerSelected = 0;
 bool showFileContent = false;
 
@@ -589,8 +598,8 @@ void drawHardwareMenu() {
     canvas.drawCircle(-80, 67, 110, CP_DIM);
     canvas.drawCircle(-80, 67, 109, CP_DIM);
     
-    int totalItems = 2;
-    std::vector<String> labels = {"FILES", "BACK"};
+    int totalItems = 3;
+    std::vector<String> labels = {"FLASH MEM", "SD CARD", "BACK"};
     
     for (int i = 0; i < totalItems; i++) {
         float offset = i - currentHardwareScroll;
@@ -643,9 +652,12 @@ void drawHardwareMenu() {
             String label = labels[hardwareMenuFocus];
             String line1 = "";
             String line2 = "";
-            if (label == "FILES") {
-                line1 = "File";
-                line2 = "manager";
+            if (label == "FLASH MEM") {
+                line1 = "Flash";
+                line2 = "memory";
+            } else if (label == "SD CARD") {
+                line1 = "SD card";
+                line2 = "storage";
             } else if (label == "BACK") {
                 line1 = "Return to";
                 line2 = "terminal";
@@ -682,7 +694,7 @@ void handleHardwareMenuInput(Keyboard_Class::KeysState status) {
             return;
         }
     } else {
-        if (hasRight && hardwareMenuFocus == 0) { // FILES has description card
+        if (hasRight && (hardwareMenuFocus == 0 || hardwareMenuFocus == 1)) {
             playSound(sound_select, sound_select_size);
             showHardwareDesc = true;
             return;
@@ -695,11 +707,18 @@ void handleHardwareMenuInput(Keyboard_Class::KeysState status) {
         hardwareDescAnimWidth = 0.0;
         
         if (hardwareMenuFocus == 0) {
+            isSDCardManager = false;
             appState = STATE_FILE_MANAGER;
             fileManagerSelected = 0;
             showFileContent = false;
             drawFileManager();
         } else if (hardwareMenuFocus == 1) {
+            isSDCardManager = true;
+            appState = STATE_FILE_MANAGER;
+            fileManagerSelected = 0;
+            showFileContent = false;
+            drawFileManager();
+        } else if (hardwareMenuFocus == 2) {
             appState = STATE_SPLASH;
             drawSplash();
         }
@@ -707,7 +726,7 @@ void handleHardwareMenuInput(Keyboard_Class::KeysState status) {
     }
     
     if (!showHardwareDesc) {
-        int maxFocus = 1;
+        int maxFocus = 2;
         if (hasUp) {
             playSound(sound_hover, sound_hover_size);
             hardwareMenuFocus--;
@@ -733,8 +752,14 @@ void drawFileManager() {
     
     canvas.setTextColor(CP_YELLOW);
     canvas.setTextSize(1);
-    canvas.drawCenterString("--- FILE MANAGER SCHEMA ---", 120, 12);
+    if (isSDCardManager) {
+        canvas.drawCenterString("--- SD CARD MANAGER SCHEMA ---", 120, 12);
+    } else {
+        canvas.drawCenterString("--- FLASH MANAGER SCHEMA ---", 120, 12);
+    }
     canvas.drawLine(10, 24, 230, 24, CP_CYAN);
+    
+    MockFile* currentList = isSDCardManager ? sdFiles : flashFiles;
     
     if (!showFileContent) {
         // Draw file list
@@ -750,10 +775,10 @@ void drawFileManager() {
             
             canvas.setTextColor(color);
             canvas.setCursor(15, startY);
-            canvas.print(mockFiles[i].name);
+            canvas.print(currentList[i].name);
             
             canvas.setCursor(170, startY);
-            canvas.print(mockFiles[i].size);
+            canvas.print(currentList[i].size);
             
             startY += 15;
         }
@@ -762,7 +787,7 @@ void drawFileManager() {
         canvas.drawCenterString("ENTER: OPEN  |  ESC/COMMA: BACK", 120, 114);
     } else {
         // Draw selected file content panel
-        MockFile f = mockFiles[fileManagerSelected];
+        MockFile f = currentList[fileManagerSelected];
         canvas.setTextColor(CP_CYAN);
         canvas.setCursor(15, 32);
         canvas.print("FILE: " + f.name);
