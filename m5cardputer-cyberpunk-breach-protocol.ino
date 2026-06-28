@@ -418,16 +418,16 @@ void drawControlsScreen() {
     canvas.setCursor(15, 100); canvas.print("MATRIX GRID SELECT :");
     
     canvas.setTextColor(WHITE);
-    canvas.setCursor(130, 28); canvas.print("SEMICOLON(UP) OR PERIOD(DOWN)");
-    canvas.setCursor(130, 40); canvas.print("SLASH OR ENTER");
-    canvas.setCursor(130, 52); canvas.print("COMMA");
-    canvas.setCursor(130, 64); canvas.print("MINUS OR PLUS");
-    canvas.setCursor(130, 76); canvas.print("L_BRACKET OR R_BRACKET");
+    canvas.setCursor(130, 28); canvas.print("ARROW KEYS");
+    canvas.setCursor(130, 40); canvas.print("ENTER");
+    canvas.setCursor(130, 52); canvas.print("ESC");
+    canvas.setCursor(130, 64); canvas.print("- / +");
+    canvas.setCursor(130, 76); canvas.print("[ / ]");
     canvas.setCursor(130, 88); canvas.print("BACKSPACE");
-    canvas.setCursor(130, 100); canvas.print("SEMICOLON(UP) OR PERIOD(DOWN) OR ESC");
+    canvas.setCursor(130, 100); canvas.print("ARROW KEYS");
     
     canvas.setTextColor(CP_YELLOW);
-    canvas.drawCenterString("PRESS COMMA OR ENTER TO EXIT", 120, 115);
+    canvas.drawCenterString("PRESS ESC OR COMMA OR ENTER TO EXIT", 120, 115);
     
     pushCanvas();
 }
@@ -435,7 +435,7 @@ void drawControlsScreen() {
 void handleControlsInput(Keyboard_Class::KeysState status) {
     bool hasBack = false;
     for (char c : status.word) {
-        if (c == ',') hasBack = true;
+        if (c == ',' || c == '`') hasBack = true;
     }
     if (status.enter || hasBack) {
         playSound(sound_select, sound_select_size);
