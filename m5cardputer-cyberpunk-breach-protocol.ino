@@ -88,7 +88,8 @@ enum AppState {
     STATE_GRID_SELECT,
     STATE_PHASE_TRANSITION,
     STATE_FAILED_SCREEN,
-    STATE_PLAYING
+    STATE_PLAYING,
+    STATE_CONTROLS
 };
 AppState appState = STATE_SPLASH;
 
@@ -142,6 +143,9 @@ bool showMenuDesc = false;
 float descAnimWidth = 0.0;
 bool showVolumePopup = false;
 unsigned long lastVolumeChangeTime = 0;
+bool showBrightnessPopup = false;
+unsigned long lastBrightnessChangeTime = 0;
+int globalBrightness = 80;
 
 int lastPhaseScore = 0;
 float lastTimeRatio = 0.0;
@@ -163,9 +167,12 @@ void drawGameOverFailed();
 void fetchLeaderboard(int offset = 0, int limit = 10);
 uint16_t blendColor(uint16_t c1, uint16_t c2, uint8_t alpha);
 void drawVolumeOverlay();
+void drawBrightnessOverlay();
 void pushCanvas();
 void drawCurrentScreen();
 void playMatrixRainTransition();
+void drawControlsScreen();
+void handleControlsInput(Keyboard_Class::KeysState status);
 
 void drawMessage(String msg, String line2 = "");
 void drawGlitchText(String text, int x, int y, int size, uint16_t color, bool center = true, bool forceGlitch = false) {
@@ -304,9 +311,69 @@ void drawVolumeOverlay() {
     tSpr.deleteSprite();
 }
 
+void drawBrightnessOverlay() {
+    int x = 5;
+    int y = 88;
+    int w = 75;
+    int h = 32;
+    
+    unsigned long elapsed = millis() - lastBrightnessChangeTime;
+    float t = 0.0;
+    if (elapsed > 1000) {
+        t = (float)(elapsed - 1000) / 300.0;
+        if (t > 1.0) t = 1.0;
+    }
+    
+    uint8_t alpha = 255 * (1.0 - t);
+    if (alpha == 0) return;
+    
+    M5Canvas tSpr(&canvas);
+    tSpr.createSprite(w, h);
+    
+    uint16_t transColor = canvas.color565(255, 0, 128);
+    tSpr.fillSprite(transColor);
+    
+    tSpr.fillRect(0, 0, w, h - 8, CP_PANEL);
+    tSpr.fillRect(0, h - 8, w - 8, 8, CP_PANEL);
+    
+    int chip = 8;
+    tSpr.drawLine(0, 0, w - 1, 0, CP_YELLOW);
+    tSpr.drawLine(0, 0, 0, h - 1, CP_YELLOW);
+    tSpr.drawLine(0, h - 1, w - 1 - chip, h - 1, CP_YELLOW);
+    tSpr.drawLine(w - 1, 0, w - 1, h - 1 - chip, CP_YELLOW);
+    tSpr.drawLine(w - 1, h - 1 - chip, w - 1 - chip, h - 1, CP_YELLOW);
+    
+    tSpr.setTextColor(WHITE);
+    tSpr.setTextSize(1);
+    tSpr.setCursor(8, 6);
+    tSpr.print("BRT: " + String(globalBrightness) + "%");
+    
+    tSpr.drawRect(8, 18, 59, 6, CP_YELLOW);
+    int barW = (57 * globalBrightness) / 100;
+    if (barW > 0) {
+        tSpr.fillRect(9, 19, barW, 4, CP_YELLOW);
+    }
+    
+    for (int dy = 0; dy < h; dy++) {
+        for (int dx = 0; dx < w; dx++) {
+            uint16_t pColor = tSpr.readPixel(dx, dy);
+            if (pColor != transColor) {
+                uint16_t bgColor = canvas.readPixel(x + dx, y + dy);
+                uint16_t blendedColor = blendColor(pColor, bgColor, alpha);
+                canvas.drawPixel(x + dx, y + dy, blendedColor);
+            }
+        }
+    }
+    
+    tSpr.deleteSprite();
+}
+
 void pushCanvas() {
     if (showVolumePopup) {
         drawVolumeOverlay();
+    }
+    if (showBrightnessPopup) {
+        drawBrightnessOverlay();
     }
     canvas.pushSprite(0, 0);
     canvas.endWrite();
@@ -325,6 +392,55 @@ void drawCurrentScreen() {
         case STATE_PHASE_TRANSITION: drawPhaseTransition(); break;
         case STATE_FAILED_SCREEN: drawGameOverFailed(); break;
         case STATE_PLAYING: drawScreen(); break;
+        case STATE_CONTROLS: drawControlsScreen(); break;
+    }
+}
+
+void drawControlsScreen() {
+    canvas.startWrite();
+    canvas.fillScreen(CP_BG);
+    
+    canvas.drawRect(5, 5, 230, 125, CP_CYAN);
+    canvas.drawRect(7, 7, 226, 121, CP_DIM);
+    
+    canvas.setTextColor(CP_YELLOW);
+    canvas.setTextSize(1);
+    canvas.drawCenterString("--- CYBERDECK INPUT SCHEMATICS ---", 120, 11);
+    canvas.drawLine(10, 22, 230, 22, CP_CYAN);
+    
+    canvas.setTextColor(CP_CYAN);
+    canvas.setCursor(15, 28); canvas.print("NAVIGATE / SCROLL  :");
+    canvas.setCursor(15, 40); canvas.print("SELECT / CONFIRM   :");
+    canvas.setCursor(15, 52); canvas.print("CANCEL / GO BACK   :");
+    canvas.setCursor(15, 64); canvas.print("VOLUME CONTROL     :");
+    canvas.setCursor(15, 76); canvas.print("BRIGHTNESS CONTROL :");
+    canvas.setCursor(15, 88); canvas.print("TEXT DELETE        :");
+    canvas.setCursor(15, 100); canvas.print("MATRIX GRID SELECT :");
+    
+    canvas.setTextColor(WHITE);
+    canvas.setCursor(130, 28); canvas.print("; (UP)  / . (DOWN)");
+    canvas.setCursor(130, 40); canvas.print("/ or ENTER key");
+    canvas.setCursor(130, 52); canvas.print(", key");
+    canvas.setCursor(130, 64); canvas.print("- key / + key");
+    canvas.setCursor(130, 76); canvas.print("[ key / ] key");
+    canvas.setCursor(130, 88); canvas.print("BACKSPACE key");
+    canvas.setCursor(130, 100); canvas.print(", / ; and / / .");
+    
+    canvas.setTextColor(CP_YELLOW);
+    canvas.drawCenterString("PRESS COMMA (,) OR ENTER TO EXIT", 120, 115);
+    
+    pushCanvas();
+}
+
+void handleControlsInput(Keyboard_Class::KeysState status) {
+    bool hasBack = false;
+    for (char c : status.word) {
+        if (c == ',') hasBack = true;
+    }
+    if (status.enter || hasBack) {
+        playSound(sound_select, sound_select_size);
+        appState = STATE_MAIN_MENU;
+        drawMainMenu();
     }
 }
 
@@ -852,12 +968,12 @@ void drawMainMenu() {
     canvas.drawCircle(-80, 67, 110, CP_DIM);
     canvas.drawCircle(-80, 67, 109, CP_DIM);
     
-    int totalItems = isGuest ? 2 : 4;
+    int totalItems = isGuest ? 3 : 5;
     std::vector<String> labels;
     if (isGuest) {
-        labels = {"HACK", "BACK"};
+        labels = {"HACK", "CONTROLS", "BACK"};
     } else {
-        labels = {"HACK", "LEADERBOARD", "ACCOUNT", "BACK"};
+        labels = {"HACK", "LEADERBOARD", "ACCOUNT", "CONTROLS", "BACK"};
     }
     
     for (int i = 0; i < totalItems; i++) {
@@ -933,9 +1049,11 @@ void drawMainMenu() {
             canvas.setTextSize(1);
             canvas.setCursor(x + 10, y + 11);
             String descText = "";
-            if (mainMenuFocus == 0) descText = "HACK: Access subnet gateways";
-            else if (mainMenuFocus == 1) descText = "DATABANK: View global scores";
-            else if (mainMenuFocus == 2) descText = "ACCOUNT: Operative profile";
+            String label = labels[mainMenuFocus];
+            if (label == "HACK") descText = "HACK: Access subnet gateways";
+            else if (label == "LEADERBOARD") descText = "DATABANK: View global scores";
+            else if (label == "ACCOUNT") descText = "ACCOUNT: Operative profile";
+            else if (label == "CONTROLS") descText = "CONTROLS: Keyboard bindings";
             canvas.print(descText);
         }
     }
@@ -961,7 +1079,8 @@ void handleMainMenuInput(Keyboard_Class::KeysState status) {
             return;
         }
     } else {
-        if (hasRight && mainMenuFocus < 3) {
+        int limit = isGuest ? 2 : 4;
+        if (hasRight && mainMenuFocus < limit) {
             playSound(sound_select, sound_select_size);
             showMenuDesc = true;
             return;
@@ -989,7 +1108,10 @@ void handleMainMenuInput(Keyboard_Class::KeysState status) {
             appState = STATE_ACCOUNT;
             accountFocus = 0;
             accountStatsFetched = false;
-        } else if ((mainMenuFocus == 3 && !isGuest) || (mainMenuFocus == 1 && isGuest)) {
+        } else if ((mainMenuFocus == 3 && !isGuest) || (mainMenuFocus == 1 && isGuest)) { // CONTROLS
+            appState = STATE_CONTROLS;
+            drawControlsScreen();
+        } else if ((mainMenuFocus == 4 && !isGuest) || (mainMenuFocus == 2 && isGuest)) { // REBOOT / BACK
             canvas.fillScreen(CP_BG);
             canvas.setTextColor(CP_RED);
             canvas.setTextSize(2);
@@ -1002,7 +1124,7 @@ void handleMainMenuInput(Keyboard_Class::KeysState status) {
     }
     
     if (!showMenuDesc) {
-        int maxFocus = isGuest ? 1 : 3;
+        int maxFocus = isGuest ? 2 : 4;
         if (hasUp) {
             playSound(sound_hover, sound_hover_size);
             mainMenuFocus--;
@@ -1421,6 +1543,14 @@ void setup() {
     globalVolume = ((globalVolume + 2) / 5) * 5;
     if (globalVolume > 100) globalVolume = 100;
     M5Cardputer.Speaker.setVolume((globalVolume * 255) / 100);
+    
+    globalBrightness = prefs.getInt("brightness", 80);
+    if (globalBrightness > 100) globalBrightness = (globalBrightness * 100) / 255;
+    globalBrightness = ((globalBrightness + 2) / 5) * 5;
+    if (globalBrightness > 100) globalBrightness = 100;
+    if (globalBrightness < 5) globalBrightness = 5;
+    M5Cardputer.Display.setBrightness((globalBrightness * 255) / 100);
+    
     if (authUser != "") rememberMe = true;
     
     if (savedSSID != "") {
@@ -1838,6 +1968,7 @@ void loop() {
     if (keyChanged && keyPressed) {
         Keyboard_Class::KeysState status = globalStatus;
         bool volChanged = false;
+        bool brtChanged = false;
         for (auto i : status.word) {
             if (i == '-' || i == '_') {
                 globalVolume -= 5;
@@ -1847,6 +1978,14 @@ void loop() {
                 globalVolume += 5;
                 if (globalVolume > 100) globalVolume = 100;
                 volChanged = true;
+            } else if (i == '[') {
+                globalBrightness -= 5;
+                if (globalBrightness < 5) globalBrightness = 5;
+                brtChanged = true;
+            } else if (i == ']') {
+                globalBrightness += 5;
+                if (globalBrightness > 100) globalBrightness = 100;
+                brtChanged = true;
             }
         }
         if (volChanged) {
@@ -1857,6 +1996,14 @@ void loop() {
             lastVolumeChangeTime = now;
             drawCurrentScreen();
         }
+        if (brtChanged) {
+            M5Cardputer.Display.setBrightness((globalBrightness * 255) / 100);
+            prefs.putInt("brightness", globalBrightness);
+            playSound(sound_hover, sound_hover_size);
+            showBrightnessPopup = true;
+            lastBrightnessChangeTime = now;
+            drawCurrentScreen();
+        }
     }
     
     if (showVolumePopup) {
@@ -1864,6 +2011,18 @@ void loop() {
         if (elapsed > 1000) {
             if (elapsed >= 1300) {
                 showVolumePopup = false;
+                drawCurrentScreen();
+            } else {
+                drawCurrentScreen();
+            }
+        }
+    }
+    
+    if (showBrightnessPopup) {
+        unsigned long elapsed = now - lastBrightnessChangeTime;
+        if (elapsed > 1000) {
+            if (elapsed >= 1300) {
+                showBrightnessPopup = false;
                 drawCurrentScreen();
             } else {
                 drawCurrentScreen();
@@ -1981,6 +2140,15 @@ void loop() {
             drawMainMenu();
         }
         
+        delay(10);
+        return;
+    }
+
+    if (appState == STATE_CONTROLS) {
+        if (keyChanged && keyPressed) {
+            handleControlsInput(globalStatus);
+            if (appState == STATE_CONTROLS) drawControlsScreen();
+        }
         delay(10);
         return;
     }
