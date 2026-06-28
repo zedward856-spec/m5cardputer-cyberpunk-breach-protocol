@@ -1543,8 +1543,22 @@ void handleFileActionsMenuInput(Keyboard_Class::KeysState status) {
                         populateFileList();
                     }
                 }
-                fileManagerSelected = 0;
-                fileManagerScrollOffset = 0;
+                if (fileManagerSelected >= (int)loadedFiles.size()) {
+                    fileManagerSelected = (int)loadedFiles.size() - 1;
+                }
+                if (fileManagerSelected < 0) {
+                    fileManagerSelected = 0;
+                }
+                
+                if ((int)loadedFiles.size() > 5) {
+                    if (fileManagerSelected < fileManagerScrollOffset) {
+                        fileManagerScrollOffset = fileManagerSelected;
+                    } else if (fileManagerSelected > fileManagerScrollOffset + 4) {
+                        fileManagerScrollOffset = fileManagerSelected - 4;
+                    }
+                } else {
+                    fileManagerScrollOffset = 0;
+                }
                 appState = STATE_FILE_MANAGER;
                 drawFileManager();
             } else {
@@ -1606,6 +1620,25 @@ void handleFileActionsMenuInput(Keyboard_Class::KeysState status) {
                     if (src) src.close();
                     if (dst) dst.close();
                     populateFileList();
+                }
+            }
+            int foundIdx = -1;
+            for (size_t i = 0; i < loadedFiles.size(); i++) {
+                if (loadedFiles[i].name == sourceFilename) {
+                    foundIdx = i;
+                    break;
+                }
+            }
+            if (foundIdx >= 0) {
+                fileManagerSelected = foundIdx;
+                if ((int)loadedFiles.size() > 5) {
+                    if (fileManagerSelected > 4) {
+                        fileManagerScrollOffset = fileManagerSelected - 4;
+                    } else {
+                        fileManagerScrollOffset = 0;
+                    }
+                } else {
+                    fileManagerScrollOffset = 0;
                 }
             }
             appState = STATE_FILE_MANAGER;
@@ -1679,6 +1712,27 @@ void handleFileRenameInput(Keyboard_Class::KeysState status) {
                 } else {
                     SPIFFS.rename(oldPath, newPath);
                     populateFileList();
+                }
+            }
+            
+            // Relocate renamed file in the sorted list
+            int foundIdx = -1;
+            for (size_t i = 0; i < loadedFiles.size(); i++) {
+                if (loadedFiles[i].name == renameInputText) {
+                    foundIdx = i;
+                    break;
+                }
+            }
+            if (foundIdx >= 0) {
+                fileManagerSelected = foundIdx;
+                if ((int)loadedFiles.size() > 5) {
+                    if (fileManagerSelected > 4) {
+                        fileManagerScrollOffset = fileManagerSelected - 4;
+                    } else {
+                        fileManagerScrollOffset = 0;
+                    }
+                } else {
+                    fileManagerScrollOffset = 0;
                 }
             }
         }
