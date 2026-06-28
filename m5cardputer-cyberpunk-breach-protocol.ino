@@ -649,6 +649,68 @@ bool isSystemFile(String name) {
     return false;
 }
 
+bool deleteRecursive(String path) {
+    if (isSDCardManager) {
+        if (isSDFallback) return true;
+        File dir = SD.open(path);
+        if (!dir) return false;
+        
+        if (!dir.isDirectory()) {
+            dir.close();
+            return SD.remove(path);
+        }
+        
+        std::vector<String> childPaths;
+        std::vector<bool> childIsDir;
+        
+        File file = dir.openNextFile();
+        while (file) {
+            String childName = String(file.name());
+            int lastSlash = childName.lastIndexOf('/');
+            if (lastSlash >= 0) childName = childName.substring(lastSlash + 1);
+            
+            childPaths.push_back(path + (path.endsWith("/") ? "" : "/") + childName);
+            childIsDir.push_back(file.isDirectory());
+            file.close();
+            file = dir.openNextFile();
+        }
+        dir.close();
+        
+        for (size_t i = 0; i < childPaths.size(); i++) {
+            if (childIsDir[i]) {
+                deleteRecursive(childPaths[i]);
+            } else {
+                SD.remove(childPaths[i]);
+            }
+        }
+        return SD.rmdir(path);
+    } else {
+        if (isFlashFallback) return true;
+        File root = SPIFFS.open("/");
+        if (!root) return false;
+        
+        std::vector<String> filesToDelete;
+        File file = root.openNextFile();
+        while (file) {
+            String name = String(file.name());
+            String matchPrefix = path;
+            if (!matchPrefix.endsWith("/")) matchPrefix += "/";
+            
+            if (name.startsWith(matchPrefix) || name == path) {
+                filesToDelete.push_back(name);
+            }
+            file.close();
+            file = root.openNextFile();
+        }
+        root.close();
+        
+        for (const String& f : filesToDelete) {
+            SPIFFS.remove(f);
+        }
+        return true;
+    }
+}
+
 bool compareFiles(const RealFile& a, const RealFile& b) {
     String aName = a.name;
     String bName = b.name;
@@ -1531,15 +1593,14 @@ void handleFileActionsMenuInput(Keyboard_Class::KeysState status) {
                         loadedFiles.erase(loadedFiles.begin() + fileManagerSelected);
                     } else {
                         // Physical delete
-                        if (targetFile.isDir) SD.rmdir(fullPath);
-                        else SD.remove(fullPath);
+                        deleteRecursive(fullPath);
                         populateFileList();
                     }
                 } else {
                     if (isFlashFallback) {
                         loadedFiles.erase(loadedFiles.begin() + fileManagerSelected);
                     } else {
-                        SPIFFS.remove(fullPath);
+                        deleteRecursive(fullPath);
                         populateFileList();
                     }
                 }
