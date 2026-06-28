@@ -1098,21 +1098,32 @@ void drawMainMenu() {
         if (descAnimWidth > 160.0) {
             canvas.setTextColor(CP_YELLOW);
             String label = labels[mainMenuFocus];
+            String line1 = "";
+            String line2 = "";
+            
             if (label == "HACK") {
+                line1 = "Access subnet";
+                line2 = "gateways";
+            } else if (label == "LEADERBOARD") {
+                line1 = "View global";
+                line2 = "scores";
+            } else if (label == "ACCOUNT") {
+                line1 = "Operative";
+                line2 = "profile";
+            } else if (label == "CONTROLS") {
+                line1 = "Keyboard";
+                line2 = "bindings";
+            } else if (label == "CREDITS") {
+                line1 = "System";
+                line2 = "developers";
+            }
+            
+            if (line1 != "") {
                 canvas.setTextSize(2);
                 canvas.setCursor(x + 10, y + 0);
-                canvas.print("Access subnet");
+                canvas.print(line1);
                 canvas.setCursor(x + 10, y + 14);
-                canvas.print("gateways");
-            } else {
-                canvas.setTextSize(1);
-                canvas.setCursor(x + 10, y + 11);
-                String descText = "";
-                if (label == "LEADERBOARD") descText = "View global scores";
-                else if (label == "ACCOUNT") descText = "Operative profile";
-                else if (label == "CONTROLS") descText = "Keyboard bindings";
-                else if (label == "CREDITS") descText = "System developers";
-                canvas.print(descText);
+                canvas.print(line2);
             }
         }
     }
