@@ -227,6 +227,7 @@ void drawMessage(String msg, String line2) {
 
 void drawChippedButton(int x, int y, int w, int h, uint16_t color) {
     int chip = (h > 25) ? 8 : 5;
+    if (w <= chip) return;
     canvas.drawLine(x, y, x + w, y, color);
     canvas.drawLine(x, y, x, y + h, color);
     canvas.drawLine(x, y + h, x + w - chip, y + h, color);
@@ -768,7 +769,7 @@ void drawMainMenu() {
         canvas.print(labels[i]);
     }
     
-    if (descAnimWidth > 0.0) {
+    if (descAnimWidth >= 10.0) {
         int x = 40;
         int y = 52; // selected button y (67 - 15)
         int h = 30;
