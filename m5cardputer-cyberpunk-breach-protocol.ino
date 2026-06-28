@@ -609,6 +609,7 @@ String clipboardSourcePath = "";
 String renameInputText = "";
 int fileActionsMenuSelected = 0;
 int settingsFocus = 0;
+bool showSystemFiles = false;
 
 std::vector<String> dummyLogs = {
     "[ OK ] Init SPI flash layout...",
@@ -639,6 +640,14 @@ std::vector<RealFile> loadedFiles;
 String fsStatusMessage = "";
 std::vector<String> openedFileContent;
 String openedFileName = "";
+
+bool isSystemFile(String name) {
+    String lower = name;
+    lower.toLowerCase();
+    if (lower == "system volume information") return true;
+    if (lower.startsWith(".")) return true;
+    return false;
+}
 
 bool compareFiles(const RealFile& a, const RealFile& b) {
     String aName = a.name;
@@ -705,6 +714,11 @@ void populateFileList() {
                     rf.name = rf.name.substring(lastSlashIdx + 1);
                 }
                 
+                if (!showSystemFiles && isSystemFile(rf.name)) {
+                    file = root.openNextFile();
+                    continue;
+                }
+                
                 rf.isDir = file.isDirectory();
                 if (rf.isDir) {
                     rf.sizeStr = "DIR";
@@ -751,6 +765,11 @@ void populateFileList() {
                 RealFile rf;
                 rf.name = String(file.name());
                 if (rf.name.startsWith("/")) rf.name.remove(0, 1);
+                
+                if (!showSystemFiles && isSystemFile(rf.name)) {
+                    file = root.openNextFile();
+                    continue;
+                }
                 
                 rf.isDir = file.isDirectory();
                 if (rf.isDir) {
@@ -1060,36 +1079,50 @@ void drawHardwareSettings() {
     // Row 0: Sort Field
     bool focusField = (settingsFocus == 0);
     uint16_t fieldBorderColor = focusField ? CP_YELLOW : CP_DIM;
-    canvas.fillRect(15, 36, 210, 22, focusField ? canvas.color565(30, 30, 30) : CP_BG);
-    canvas.drawRect(15, 36, 210, 22, fieldBorderColor);
+    canvas.fillRect(15, 30, 210, 20, focusField ? canvas.color565(30, 30, 30) : CP_BG);
+    canvas.drawRect(15, 30, 210, 20, fieldBorderColor);
     
     canvas.setTextColor(focusField ? CP_YELLOW : WHITE);
-    canvas.setCursor(22, 43);
+    canvas.setCursor(22, 36);
     canvas.print("SORT BY:");
     
     canvas.setTextColor(focusField ? WHITE : CP_DIM);
-    canvas.setCursor(120, 43);
+    canvas.setCursor(120, 36);
     canvas.print(currentSortField == SORT_FIELD_NAME ? "< NAME >" : "< TYPE >");
     
     // Row 1: Sort Order
     bool focusOrder = (settingsFocus == 1);
     uint16_t orderBorderColor = focusOrder ? CP_YELLOW : CP_DIM;
-    canvas.fillRect(15, 66, 210, 22, focusOrder ? canvas.color565(30, 30, 30) : CP_BG);
-    canvas.drawRect(15, 66, 210, 22, orderBorderColor);
+    canvas.fillRect(15, 53, 210, 20, focusOrder ? canvas.color565(30, 30, 30) : CP_BG);
+    canvas.drawRect(15, 53, 210, 20, orderBorderColor);
     
     canvas.setTextColor(focusOrder ? CP_YELLOW : WHITE);
-    canvas.setCursor(22, 73);
+    canvas.setCursor(22, 59);
     canvas.print("ORDER:");
     
     canvas.setTextColor(focusOrder ? WHITE : CP_DIM);
-    canvas.setCursor(120, 73);
+    canvas.setCursor(120, 59);
     canvas.print(currentSortOrder == SORT_ORDER_ASC ? "< ASCENDING >" : "< DESCENDING >");
+    
+    // Row 2: System Files
+    bool focusSys = (settingsFocus == 2);
+    uint16_t sysBorderColor = focusSys ? CP_YELLOW : CP_DIM;
+    canvas.fillRect(15, 76, 210, 20, focusSys ? canvas.color565(30, 30, 30) : CP_BG);
+    canvas.drawRect(15, 76, 210, 20, sysBorderColor);
+    
+    canvas.setTextColor(focusSys ? CP_YELLOW : WHITE);
+    canvas.setCursor(22, 82);
+    canvas.print("SYS FILES:");
+    
+    canvas.setTextColor(focusSys ? WHITE : CP_DIM);
+    canvas.setCursor(120, 82);
+    canvas.print(showSystemFiles ? "< SHOW >" : "< HIDE >");
     
     // Footer hints
     canvas.setTextColor(CP_DIM);
-    canvas.drawCenterString("UP/DN: SELECT ROW  |  LF/RT: CHANGE", 120, 98);
+    canvas.drawCenterString("UP/DN: SELECT ROW  |  LF/RT: CHANGE", 120, 100);
     canvas.setTextColor(CP_YELLOW);
-    canvas.drawCenterString("ENTER: APPLY  |  ESC/COMMA: BACK", 120, 114);
+    canvas.drawCenterString("ENTER: APPLY  |  ESC/COMMA: BACK", 120, 115);
     
     pushCanvas();
 }
@@ -1109,6 +1142,9 @@ void handleHardwareSettingsInput(Keyboard_Class::KeysState status) {
     
     if (status.enter) {
         playSound(sound_select, sound_select_size);
+        populateFileList(); // Reload files with the new system files toggle filter!
+        fileManagerSelected = 0;
+        fileManagerScrollOffset = 0;
         appState = STATE_HARDWARE_MENU;
         drawHardwareMenu();
         return;
@@ -1125,12 +1161,12 @@ void handleHardwareSettingsInput(Keyboard_Class::KeysState status) {
     
     if (hasUp) {
         playSound(sound_hover, sound_hover_size);
-        settingsFocus = 1 - settingsFocus; // Toggle between 0 and 1
+        settingsFocus = (settingsFocus - 1 + 3) % 3;
         drawHardwareSettings();
     }
     if (hasDown) {
         playSound(sound_hover, sound_hover_size);
-        settingsFocus = 1 - settingsFocus; // Toggle between 0 and 1
+        settingsFocus = (settingsFocus + 1) % 3;
         drawHardwareSettings();
     }
     
@@ -1139,9 +1175,12 @@ void handleHardwareSettingsInput(Keyboard_Class::KeysState status) {
         if (settingsFocus == 0) {
             // Toggle Sort Field
             currentSortField = (currentSortField == SORT_FIELD_NAME) ? SORT_FIELD_TYPE : SORT_FIELD_NAME;
-        } else {
+        } else if (settingsFocus == 1) {
             // Toggle Sort Order
             currentSortOrder = (currentSortOrder == SORT_ORDER_ASC) ? SORT_ORDER_DESC : SORT_ORDER_ASC;
+        } else {
+            // Toggle System Files visibility
+            showSystemFiles = !showSystemFiles;
         }
         drawHardwareSettings();
     }
