@@ -14,6 +14,7 @@
 #include "soc/rtc_cntl_reg.h"
 #include <WiFiClientSecure.h>
 #include <ArduinoOTA.h>
+#include <Update.h>
 #include <AudioOutput.h>
 #include <AudioFileSourceSD.h>
 #include <AudioFileSourceSPIFFS.h>
@@ -179,7 +180,8 @@ enum AppState {
     STATE_FILE_LOADING,
     STATE_HARDWARE_SETTINGS,
     STATE_FILE_ACTIONS_MENU,
-    STATE_FILE_RENAME_INPUT
+    STATE_FILE_RENAME_INPUT,
+    STATE_OTA_CATALOG
 };
 AppState appState = STATE_SPLASH;
 
@@ -276,6 +278,9 @@ void drawFileActionsMenu();
 void handleFileActionsMenuInput(Keyboard_Class::KeysState status);
 void drawFileRenameInput();
 void handleFileRenameInput(Keyboard_Class::KeysState status);
+void drawOtaCatalog();
+void handleOtaCatalogInput(Keyboard_Class::KeysState status);
+void performOtaUpdate(String binUrl);
 void startMp3(String fileName);
 void stopMp3();
 
@@ -519,6 +524,7 @@ void drawCurrentScreen() {
         case STATE_HARDWARE_SETTINGS: drawHardwareSettings(); break;
         case STATE_FILE_ACTIONS_MENU: drawFileActionsMenu(); break;
         case STATE_FILE_RENAME_INPUT: drawFileRenameInput(); break;
+        case STATE_OTA_CATALOG: drawOtaCatalog(); break;
     }
 }
 
@@ -692,6 +698,22 @@ float imageScale = 1.0f;
 bool showBootMenu = false;
 bool showSplashBootMenu = false;
 int splashBootFocus = 0;
+
+struct FirmwareCatalogItem {
+    String name;
+    String version;
+    String binUrl;
+    String desc;
+};
+
+std::vector<FirmwareCatalogItem> otaCatalog = {
+    {"BREACH PROTOCOL", "v7.0reborn", "https://github.com/zedward856-spec/m5cardputer-cyberpunk-breach-protocol/releases/download/7.0reborn/m5cardputer-cyberpunk-breach-protocol.ino.bin", "Cyberpunk Breach Protocol App"},
+    {"M5 LAUNCHER", "v2.1.1", "https://github.com/bmorcelli/Launcher/releases/download/v2.1.1/M5Launcher-m5stack-cardputer.bin", "Multi-Binary Loader by bmorcelli"},
+    {"BRUCE MULTI-TOOL", "v1.2", "https://github.com/pr3y/Bruce/releases/download/v1.2/Bruce.bin", "Cardputer Multi-Tool Firmware"},
+    {"MARAUDER PORT", "v0.13.7", "https://github.com/bmorcelli/M5Launcher-FirmwareCatalog/raw/main/Cardputer/Marauder.bin", "WiFi Marauder by bmorcelli"}
+};
+
+int otaCatalogFocus = 0;
 
 std::vector<String> dummyLogs = {
     "[ OK ] Init SPI flash layout...",
@@ -2269,16 +2291,16 @@ void drawSplash() {
         canvas.drawRect(2, 33, 236, 94, CP_CYAN);
         
         canvas.setTextColor(CP_YELLOW);
-        canvas.drawCenterString("--- SELECT BOOT NODE ---", 120, 38);
+        canvas.drawCenterString("--- SELECT BOOT NODE ---", 120, 36);
         
-        std::vector<String> options = {"HARDWARE NODE", "NETWORK NODE", "OFFLINE PLAY", "SYSTEM SETTINGS"};
-        for (int i = 0; i < 4; i++) {
+        std::vector<String> options = {"HARDWARE NODE", "NETWORK NODE", "OFFLINE PLAY", "SYSTEM SETTINGS", "OTA CATALOG"};
+        for (int i = 0; i < 5; i++) {
             bool isSelected = (i == splashBootFocus);
             canvas.setTextColor(isSelected ? CP_CYAN : CP_DIM);
             if (isSelected) {
-                canvas.drawCenterString("> [ " + options[i] + " ] <", 120, 56 + i * 15);
+                canvas.drawCenterString("> [ " + options[i] + " ] <", 120, 48 + i * 13);
             } else {
-                canvas.drawCenterString(options[i], 120, 56 + i * 15);
+                canvas.drawCenterString(options[i], 120, 48 + i * 13);
             }
         }
         
@@ -2317,11 +2339,11 @@ void handleSplashInput(Keyboard_Class::KeysState status) {
     
     if (hasUp) {
         playSound(sound_hover, sound_hover_size);
-        splashBootFocus = (splashBootFocus - 1 + 4) % 4;
+        splashBootFocus = (splashBootFocus - 1 + 5) % 5;
         drawSplash();
     } else if (hasDown) {
         playSound(sound_hover, sound_hover_size);
-        splashBootFocus = (splashBootFocus + 1) % 4;
+        splashBootFocus = (splashBootFocus + 1) % 5;
         drawSplash();
     } else if (hasEsc) {
         playSound(sound_select, sound_select_size);
@@ -2356,6 +2378,10 @@ void handleSplashInput(Keyboard_Class::KeysState status) {
             appState = STATE_HARDWARE_SETTINGS;
             settingsFocus = 0;
             drawHardwareSettings();
+        } else if (splashBootFocus == 4) {
+            appState = STATE_OTA_CATALOG;
+            otaCatalogFocus = 0;
+            drawOtaCatalog();
         }
     }
 }
@@ -4080,6 +4106,14 @@ void loop() {
         return;
     }
     
+    if (appState == STATE_OTA_CATALOG) {
+        if (keyChanged && keyPressed) {
+            handleOtaCatalogInput(globalStatus);
+        }
+        delay(10);
+        return;
+    }
+    
     if (appState == STATE_FILE_LOADING) {
         drawFileLoading();
         delay(10);
@@ -4409,6 +4443,192 @@ void loop() {
         drawScreen();
     }
     delay(10);
+}
+
+void drawOtaCatalog() {
+    canvas.startWrite();
+    canvas.fillScreen(CP_BG);
+    
+    canvas.drawRect(5, 5, 230, 125, CP_CYAN);
+    canvas.drawRect(7, 7, 226, 121, CP_DIM);
+    
+    canvas.setTextColor(CP_YELLOW);
+    canvas.setTextSize(1);
+    canvas.drawCenterString("--- OTA FIRMWARE CATALOG ---", 120, 10);
+    canvas.drawLine(10, 20, 230, 20, CP_CYAN);
+    
+    if (WiFi.status() != WL_CONNECTED) {
+        canvas.setTextColor(CP_RED);
+        canvas.drawCenterString("WIFI NOT CONNECTED", 120, 48);
+        canvas.setTextColor(WHITE);
+        canvas.drawCenterString("PRESS ENTER TO CONNECT", 120, 72);
+        canvas.setTextColor(CP_DIM);
+        canvas.drawCenterString("ESC: BACK", 120, 105);
+        pushCanvas();
+        return;
+    }
+    
+    int startY = 24;
+    for (int i = 0; i < (int)otaCatalog.size(); i++) {
+        bool isFocus = (i == otaCatalogFocus);
+        int rowY = startY + i * 13;
+        
+        if (isFocus) {
+            canvas.fillRect(15, rowY, 210, 13, canvas.color565(30, 30, 30));
+            canvas.drawRect(15, rowY, 210, 13, CP_YELLOW);
+            canvas.setTextColor(CP_CYAN);
+        } else {
+            canvas.setTextColor(WHITE);
+        }
+        
+        canvas.setCursor(20, rowY + 2);
+        canvas.print(otaCatalog[i].name);
+        
+        canvas.setCursor(160, rowY + 2);
+        canvas.setTextColor(isFocus ? CP_YELLOW : CP_DIM);
+        canvas.print(otaCatalog[i].version);
+    }
+    
+    canvas.drawLine(10, 93, 230, 93, CP_CYAN);
+    canvas.setTextColor(WHITE);
+    canvas.setCursor(12, 97);
+    canvas.print(otaCatalog[otaCatalogFocus].desc);
+    
+    canvas.setTextColor(CP_YELLOW);
+    canvas.drawCenterString("UP/DN: MOVE | ENTER: FLASH | ESC: BACK", 120, 114);
+    
+    pushCanvas();
+}
+
+void handleOtaCatalogInput(Keyboard_Class::KeysState status) {
+    bool hasEsc = false;
+    for (char c : status.word) {
+        if (c == '`') hasEsc = true;
+    }
+    
+    if (hasEsc) {
+        playSound(sound_select, sound_select_size);
+        appState = STATE_SPLASH;
+        showSplashBootMenu = true;
+        splashBootFocus = 4;
+        drawSplash();
+        return;
+    }
+    
+    if (WiFi.status() != WL_CONNECTED) {
+        if (status.enter) {
+            playSound(sound_select, sound_select_size);
+            startWifiScan();
+            drawOtaCatalog();
+        }
+        return;
+    }
+    
+    bool hasUp = false, hasDown = false;
+    for (char c : status.word) {
+        if (c == ';') hasUp = true;
+        if (c == '.') hasDown = true;
+    }
+    
+    if (hasUp) {
+        playSound(sound_hover, sound_hover_size);
+        otaCatalogFocus = (otaCatalogFocus - 1 + otaCatalog.size()) % otaCatalog.size();
+        drawOtaCatalog();
+    } else if (hasDown) {
+        playSound(sound_hover, sound_hover_size);
+        otaCatalogFocus = (otaCatalogFocus + 1) % otaCatalog.size();
+        drawOtaCatalog();
+    } else if (status.enter) {
+        playSound(sound_select, sound_select_size);
+        performOtaUpdate(otaCatalog[otaCatalogFocus].binUrl);
+    }
+}
+
+void performOtaUpdate(String binUrl) {
+    canvas.fillScreen(CP_BG);
+    canvas.setTextColor(CP_YELLOW);
+    canvas.setTextSize(1);
+    canvas.drawCenterString("CONNECTING SECURE ENDPOINT...", 120, 40);
+    pushCanvas();
+    
+    WiFiClientSecure client;
+    client.setInsecure();
+    HTTPClient http;
+    
+    if (http.begin(client, binUrl)) {
+        int httpCode = http.GET();
+        if (httpCode == HTTP_CODE_OK) {
+            int contentLength = http.getSize();
+            if (contentLength <= 0) {
+                contentLength = 3145728; // fallback to partition max size
+            }
+            
+            bool canBegin = Update.begin(contentLength);
+            if (canBegin) {
+                WiFiClient* stream = http.getStreamPtr();
+                size_t written = 0;
+                uint8_t buff[2048] = { 0 };
+                unsigned long lastUpdate = 0;
+                
+                while (http.connected() && (written < contentLength)) {
+                    size_t size = stream->available();
+                    if (size) {
+                        int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
+                        Update.write(buff, c);
+                        written += c;
+                        
+                        unsigned long currentMillis = millis();
+                        if (currentMillis - lastUpdate > 250) {
+                            int progress = (written * 100) / contentLength;
+                            if (progress > 100) progress = 100;
+                            drawProgressBar(progress, "FLASHING OTA: " + String(progress) + "%", CP_CYAN);
+                            lastUpdate = currentMillis;
+                        }
+                    }
+                    delay(1);
+                }
+                
+                if (Update.end()) {
+                    if (Update.isFinished()) {
+                        canvas.fillScreen(CP_BG);
+                        canvas.setTextColor(CP_CYAN);
+                        canvas.setTextSize(2);
+                        canvas.drawCenterString("FLASH COMPLETE!", 120, 50);
+                        canvas.setTextSize(1);
+                        canvas.setTextColor(CP_YELLOW);
+                        canvas.drawCenterString("REBOOTING SYSTEM...", 120, 80);
+                        pushCanvas();
+                        delay(2000);
+                        ESP.restart();
+                    }
+                }
+            } else {
+                canvas.fillScreen(CP_BG);
+                canvas.setTextColor(CP_RED);
+                canvas.setTextSize(1);
+                canvas.drawCenterString("PARTITION ERROR", 120, 50);
+                canvas.drawCenterString("SIZE EXCEEDS LIMIT", 120, 70);
+                pushCanvas();
+                delay(3000);
+            }
+        } else {
+            canvas.fillScreen(CP_BG);
+            canvas.setTextColor(CP_RED);
+            canvas.setTextSize(1);
+            canvas.drawCenterString("HTTP ERROR: " + String(httpCode), 120, 50);
+            pushCanvas();
+            delay(3000);
+        }
+        http.end();
+    } else {
+        canvas.fillScreen(CP_BG);
+        canvas.setTextColor(CP_RED);
+        canvas.setTextSize(1);
+        canvas.drawCenterString("CONNECT FAILED", 120, 50);
+        pushCanvas();
+        delay(3000);
+    }
+    drawOtaCatalog();
 }
 
 
