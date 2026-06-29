@@ -1269,8 +1269,8 @@ void drawHardwareSettings() {
     }
     
     // Draw scrollable tabs
-    int tabX[3] = {12, 84, 154};
-    int tabW[3] = {68, 66, 68};
+    int tabX[3] = {18, 86, 154};
+    int tabW[3] = {64, 64, 64};
     String tabNames[5] = {"HARDWARE", "NETWORK", "OFFLINE", "  OTA  ", "APPEAR"};
     for (int t = 0; t < 3; t++) {
         int idx = settingsTabScrollOffset + t;
@@ -1285,8 +1285,21 @@ void drawHardwareSettings() {
             canvas.fillRect(tabX[t] + 1, 23, tabW[t] - 2, 12, canvas.color565(30, 30, 20));
         }
         canvas.setTextColor(isActive ? CP_YELLOW : WHITE);
-        canvas.setCursor(tabX[t] + 4, 25);
+        // Center text in smaller tabs: width of character size 1 is 6 pixels.
+        // E.g. "NETWORK" (7 chars * 6 = 42 pixels), tab width 64 -> center offset (64 - 42) / 2 = 11 pixels!
+        int textOffset = (64 - tabNames[idx].length() * 6) / 2;
+        canvas.setCursor(tabX[t] + textOffset, 25);
         canvas.print(tabNames[idx]);
+    }
+    
+    // Draw concealed indicators next to tabs on the sides
+    if (settingsTabScrollOffset > 0) {
+        canvas.setTextColor(CP_CYAN);
+        canvas.drawChar('<', 11, 25);
+    }
+    if (settingsTabScrollOffset < 2) {
+        canvas.setTextColor(CP_CYAN);
+        canvas.drawChar('>', 221, 25);
     }
     
     // Determine rowCount
@@ -4643,7 +4656,7 @@ void drawOtaCatalog() {
     }
     
     int startY = 24;
-    int maxDisplay = 5;
+    int maxDisplay = 6;
     for (int i = 0; i < maxDisplay; i++) {
         int idx = otaCatalogScrollOffset + i;
         if (idx >= (int)otaCatalog.size()) break;
@@ -4663,9 +4676,9 @@ void drawOtaCatalog() {
         canvas.print(otaCatalog[idx].name);
     }
     
-    canvas.drawLine(10, 93, 230, 93, CP_CYAN);
+    canvas.drawLine(10, 105, 230, 105, CP_CYAN);
     canvas.setTextColor(WHITE);
-    canvas.setCursor(12, 97);
+    canvas.setCursor(12, 109);
     
     // Show only the "by [Author Name]" at the bottom
     String authorText = "by " + otaCatalog[otaCatalogFocus].author;
@@ -4755,8 +4768,8 @@ void handleOtaCatalogInput(Keyboard_Class::KeysState status) {
         otaCatalogFocus = (otaCatalogFocus - 1 + otaCatalog.size()) % otaCatalog.size();
         if (otaCatalogFocus < otaCatalogScrollOffset) {
             otaCatalogScrollOffset = otaCatalogFocus;
-        } else if (otaCatalogFocus >= otaCatalogScrollOffset + 5) {
-            otaCatalogScrollOffset = otaCatalogFocus - 4;
+        } else if (otaCatalogFocus >= otaCatalogScrollOffset + 6) {
+            otaCatalogScrollOffset = otaCatalogFocus - 5;
         }
         drawOtaCatalog();
     } else if (hasDown && !otaCatalog.empty()) {
@@ -4764,8 +4777,8 @@ void handleOtaCatalogInput(Keyboard_Class::KeysState status) {
         otaCatalogFocus = (otaCatalogFocus + 1) % otaCatalog.size();
         if (otaCatalogFocus < otaCatalogScrollOffset) {
             otaCatalogScrollOffset = otaCatalogFocus;
-        } else if (otaCatalogFocus >= otaCatalogScrollOffset + 5) {
-            otaCatalogScrollOffset = otaCatalogFocus - 4;
+        } else if (otaCatalogFocus >= otaCatalogScrollOffset + 6) {
+            otaCatalogScrollOffset = otaCatalogFocus - 5;
         }
         drawOtaCatalog();
     } else if (status.enter && !otaCatalog.empty()) {
