@@ -199,6 +199,7 @@ String savedWifiPass = "";
 
 std::vector<String> wifiList;
 int wifiSelection = 0;
+int wifiScrollOffset = 0;
 String wifiPass = "";
 
 struct LeaderboardEntry {
@@ -1127,7 +1128,7 @@ void drawHardwareMenu() {
         if (offset > halfItems) offset -= (float)totalItems;
         if (offset < -halfItems) offset += (float)totalItems;
         
-        if (offset < -1.5 || offset > 1.5) continue;
+        if (offset < -0.1 || offset > 1.5) continue;
         
         float angle = offset * 0.391;
         float tickY = 67 + sin(angle) * 110;
@@ -1155,7 +1156,7 @@ void drawHardwareMenu() {
         int textSize = isSelected ? 2 : 1;
         uint16_t color = isSelected ? CP_YELLOW : CP_DIM;
         
-        drawChippedButton(x, y, w, h, color);
+        canvas.drawRect(x, y, w, h, color);
         canvas.setTextColor(color);
         canvas.setTextSize(textSize);
         
@@ -1170,7 +1171,7 @@ void drawHardwareMenu() {
         int y = 52;
         int h = 30;
         canvas.fillRect(x, y, (int)hardwareDescAnimWidth, h, CP_BG);
-        drawChippedButton(x, y, (int)hardwareDescAnimWidth, h, CP_YELLOW);
+        canvas.drawRect(x, y, (int)hardwareDescAnimWidth, h, CP_YELLOW);
         
         if (hardwareDescAnimWidth > 160.0) {
             canvas.setTextColor(CP_YELLOW);
@@ -2601,6 +2602,7 @@ void startWifiScan() {
     }
     appState = STATE_WIFI_SCAN;
     wifiSelection = 0;
+    wifiScrollOffset = 0;
     drawWifiScan();
 }
 
@@ -2819,8 +2821,13 @@ void drawWifiScan() {
     canvas.drawString("SELECT NODE FOR BREACH INTRUSION  ", 10, 15);
     canvas.drawString("-----------------------------------", 10, 25);
     
-    for (int i = 0; i < wifiList.size(); i++) {
-        int y = 35 + i * 11;
+    int displayCount = 8;
+    int startIdx = wifiScrollOffset;
+    int endIdx = min((int)wifiList.size(), startIdx + displayCount);
+    
+    for (int i = startIdx; i < endIdx; i++) {
+        int displayRow = i - startIdx;
+        int y = 35 + displayRow * 11;
         if (i == wifiSelection) {
             canvas.fillRect(5, y - 1, 230, 10, CP_CYAN);
             canvas.setTextColor(BLACK, CP_CYAN);
@@ -2843,10 +2850,16 @@ void handleWifiScanInput(Keyboard_Class::KeysState status) {
     if (hasUp && wifiSelection > 0) {
         wifiSelection--;
         playSound(sound_hover, sound_hover_size);
+        if (wifiSelection < wifiScrollOffset) {
+            wifiScrollOffset = wifiSelection;
+        }
     }
     if (hasDown && wifiSelection < wifiList.size() - 1) {
         wifiSelection++;
         playSound(sound_hover, sound_hover_size);
+        if (wifiSelection >= wifiScrollOffset + 8) {
+            wifiScrollOffset = wifiSelection - 7;
+        }
     }
     
     if (status.enter && wifiList.size() > 0) {
@@ -4038,6 +4051,30 @@ void loop() {
     M5Cardputer.update();
     unsigned long now = millis();
     
+    if (isMp3Playing) {
+        if (mp3) {
+            if (!mp3->loop()) {
+                if (appState == STATE_MUSIC_PLAYER) {
+                    playNextTrack();
+                } else {
+                    stopMp3();
+                }
+            } else {
+                static unsigned long lastVisualizerUpdate = 0;
+                if (millis() - lastVisualizerUpdate > 100) {
+                    if (appState == STATE_MUSIC_PLAYER) {
+                        drawMusicPlayer();
+                    } else if (appState == STATE_FILE_MANAGER) {
+                        drawFileManager();
+                    }
+                    lastVisualizerUpdate = millis();
+                }
+            }
+        } else {
+            stopMp3();
+        }
+    }
+    
     bool keyChanged = M5Cardputer.Keyboard.isChange();
     bool keyPressed = M5Cardputer.Keyboard.isPressed();
     Keyboard_Class::KeysState globalStatus;
@@ -4345,29 +4382,7 @@ void loop() {
             handleFileManagerInput(globalStatus);
         }
         
-        if (isMp3Playing) {
-            if (mp3) {
-                if (!mp3->loop()) {
-                    if (appState == STATE_MUSIC_PLAYER) {
-                        playNextTrack();
-                    } else {
-                        stopMp3();
-                    }
-                } else {
-                    static unsigned long lastVisualizerUpdate = 0;
-                    if (millis() - lastVisualizerUpdate > 100) {
-                        if (appState == STATE_MUSIC_PLAYER) {
-                            drawMusicPlayer();
-                        } else {
-                            drawFileManager();
-                        }
-                        lastVisualizerUpdate = millis();
-                    }
-                }
-            } else {
-                stopMp3();
-            }
-        } else {
+        if (!isMp3Playing) {
             if (!loadedFiles.empty() && loadedFiles[fileManagerSelected].name.length() > 18) {
                 if (millis() - lastFileSelectionTime > 1000) {
                     if (millis() - lastMarqueeUpdate > 250) {
