@@ -1319,8 +1319,11 @@ void handleHardwareSettingsInput(Keyboard_Class::KeysState status) {
     
     if (hasBack) {
         playSound(sound_select, sound_select_size);
-        appState = STATE_HARDWARE_MENU;
-        drawHardwareMenu();
+        appState = STATE_SPLASH;
+        showSplashBootMenu = true;
+        splashBootFocus = 3;
+        logOffset = 0;
+        drawSplash();
         return;
     }
     
