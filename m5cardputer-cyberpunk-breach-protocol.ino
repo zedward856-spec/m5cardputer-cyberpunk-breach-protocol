@@ -693,6 +693,7 @@ AudioFileSourceSPIFFS *fileSPIFFS = nullptr;
 AudioFileSourceBuffer *audioBuffer = nullptr;
 AudioOutputM5Speaker *audioOut = nullptr;
 bool isMp3Playing = false;
+String mp3PlayLoopMode = "name";
 String mp3Filename = "";
 unsigned long mp3StartTime = 0;
 unsigned long mp3PausedTime = 0;
@@ -1291,8 +1292,8 @@ void drawHardwareSettings() {
     // Determine rowCount
     int rowCount = 3;
     if (settingsTab == 1) rowCount = 3; // NETWORK: SSID, PASSWORD, SCAN
-    else if (settingsTab == 2) rowCount = 2; // OFFLINE: MP3 PLAY, LOOP MODE
-    else if (settingsTab == 3) rowCount = 5; // OTA: OTA CATALOG, SORT BY, LAUNCHER, ROM BURNER, REBOOT
+    else if (settingsTab == 2) rowCount = 1; // OFFLINE: PLAY LOOP ONLY
+    else if (settingsTab == 3) rowCount = 2; // OTA: OTA CATALOG, SORT BY
     else if (settingsTab == 4) rowCount = 3; // APPEARANCE: GLITCH TEXT, BRIGHTNESS, VOLUME
     
     int startY = 41;
@@ -1300,96 +1301,77 @@ void drawHardwareSettings() {
     for (int i = 0; i < rowCount; i++) {
         bool isFocus = (settingsFocus == i);
         uint16_t borderCol = isFocus ? CP_YELLOW : CP_DIM;
-        int rowY = startY + i * 14; // adjust spacing to fit 5 rows cleanly in bounds!
+        int rowY = startY + i * 17;
         
-        canvas.fillRect(15, rowY, 210, 13, isFocus ? canvas.color565(30, 30, 30) : CP_BG);
-        canvas.drawRect(15, rowY, 210, 13, borderCol);
+        canvas.fillRect(15, rowY, 210, 15, isFocus ? canvas.color565(30, 30, 30) : CP_BG);
+        canvas.drawRect(15, rowY, 210, 15, borderCol);
         
         canvas.setTextColor(isFocus ? CP_YELLOW : WHITE);
-        canvas.setCursor(22, rowY + 2);
+        canvas.setCursor(22, rowY + 3);
         
         if (settingsTab == 0) { // HARDWARE
             if (i == 0) {
                 canvas.print("SORT BY:");
-                canvas.setCursor(120, rowY + 2);
+                canvas.setCursor(120, rowY + 3);
                 canvas.setTextColor(isFocus ? WHITE : CP_DIM);
                 canvas.print(currentSortField == SORT_FIELD_NAME ? "< NAME >" : "< TYPE >");
             } else if (i == 1) {
                 canvas.print("ORDER:");
-                canvas.setCursor(120, rowY + 2);
+                canvas.setCursor(120, rowY + 3);
                 canvas.setTextColor(isFocus ? WHITE : CP_DIM);
                 canvas.print(currentSortOrder == SORT_ORDER_ASC ? "< ASCENDING >" : "< DESCENDING >");
             } else if (i == 2) {
                 canvas.print("SYS FILES:");
-                canvas.setCursor(120, rowY + 2);
+                canvas.setCursor(120, rowY + 3);
                 canvas.setTextColor(isFocus ? WHITE : CP_DIM);
                 canvas.print(showSystemFiles ? "< SHOW >" : "< HIDE >");
             }
         } else if (settingsTab == 1) { // NETWORK
             if (i == 0) {
                 canvas.print("WIFI SSID:");
-                canvas.setCursor(120, rowY + 2);
+                canvas.setCursor(120, rowY + 3);
                 canvas.setTextColor(isFocus ? WHITE : CP_DIM);
                 String displaySsid = savedSSID == "" ? "< NONE >" : savedSSID;
                 if (displaySsid.length() > 14) displaySsid = displaySsid.substring(0, 11) + "...";
                 canvas.print(displaySsid);
             } else if (i == 1) {
                 canvas.print("WIFI PASS:");
-                canvas.setCursor(120, rowY + 2);
+                canvas.setCursor(120, rowY + 3);
                 canvas.setTextColor(isFocus ? WHITE : CP_DIM);
                 String displayPass = savedWifiPass == "" ? "< NONE >" : "********";
                 canvas.print(displayPass);
             } else if (i == 2) {
                 canvas.print("WIFI SCAN:");
-                canvas.setCursor(120, rowY + 2);
+                canvas.setCursor(120, rowY + 3);
                 canvas.setTextColor(isFocus ? WHITE : CP_DIM);
                 canvas.print("< SCAN NETS >");
             }
         } else if (settingsTab == 2) { // OFFLINE
             if (i == 0) {
-                canvas.print("MP3 PLAYER:");
-                canvas.setCursor(120, rowY + 2);
-                canvas.setTextColor(isFocus ? WHITE : CP_DIM);
-                canvas.print(isMp3Playing ? "< STOP PLAYER >" : "< PLAY MP3 >");
-            } else if (i == 1) {
                 canvas.print("PLAY LOOP:");
-                canvas.setCursor(120, rowY + 2);
+                canvas.setCursor(120, rowY + 3);
                 canvas.setTextColor(isFocus ? WHITE : CP_DIM);
-                canvas.print("< ON (REPEAT) >");
+                if (mp3PlayLoopMode == "random") canvas.print("< RANDOM >");
+                else canvas.print("< BY NAME >");
             }
         } else if (settingsTab == 3) { // OTA
             if (i == 0) {
                 canvas.print("OTA CATALOG:");
-                canvas.setCursor(120, rowY + 2);
+                canvas.setCursor(120, rowY + 3);
                 canvas.setTextColor(isFocus ? WHITE : CP_DIM);
                 canvas.print("< OPEN LIST >");
             } else if (i == 1) {
                 canvas.print("SORT BY:");
-                canvas.setCursor(120, rowY + 2);
+                canvas.setCursor(120, rowY + 3);
                 canvas.setTextColor(isFocus ? WHITE : CP_DIM);
                 if (otaSortField == "downloads") canvas.print("< DOWNLOADS >");
                 else if (otaSortField == "date") canvas.print("< TIME >");
                 else canvas.print("< NAME >");
-            } else if (i == 2) {
-                canvas.print("LAUNCHER:");
-                canvas.setCursor(120, rowY + 2);
-                canvas.setTextColor(isFocus ? WHITE : CP_DIM);
-                canvas.print("< BOOT TO M5 >");
-            } else if (i == 3) {
-                canvas.print("ROM BURNER:");
-                canvas.setCursor(120, rowY + 2);
-                canvas.setTextColor(isFocus ? WHITE : CP_DIM);
-                canvas.print("< STRAP ROM >");
-            } else if (i == 4) {
-                canvas.print("REBOOT:");
-                canvas.setCursor(120, rowY + 2);
-                canvas.setTextColor(isFocus ? WHITE : CP_DIM);
-                canvas.print("< SOFT RESTART >");
             }
         } else if (settingsTab == 4) { // APPEARANCE
             if (i == 0) {
                 canvas.print("GLITCH TEXT:");
-                canvas.setCursor(120, rowY + 2);
+                canvas.setCursor(120, rowY + 3);
                 canvas.setTextColor(isFocus ? WHITE : CP_DIM);
                 String glitchLabel = "";
                 if (insaneMode == 0) glitchLabel = "< OFF >";
@@ -1398,12 +1380,12 @@ void drawHardwareSettings() {
                 canvas.print(glitchLabel);
             } else if (i == 1) {
                 canvas.print("BRIGHTNESS:");
-                canvas.setCursor(120, rowY + 2);
+                canvas.setCursor(120, rowY + 3);
                 canvas.setTextColor(isFocus ? WHITE : CP_DIM);
                 canvas.print("< " + String(globalBrightness) + "% >");
             } else if (i == 2) {
                 canvas.print("VOLUME:");
-                canvas.setCursor(120, rowY + 2);
+                canvas.setCursor(120, rowY + 3);
                 canvas.setTextColor(isFocus ? WHITE : CP_DIM);
                 canvas.print("< " + String(globalVolume) + "% >");
             }
@@ -1440,8 +1422,8 @@ void handleHardwareSettingsInput(Keyboard_Class::KeysState status) {
     
     int maxFocus = 2;
     if (settingsTab == 1) maxFocus = 2; // NETWORK: SSID, PASSWORD, SCAN
-    else if (settingsTab == 2) maxFocus = 1; // OFFLINE: MP3 PLAY, LOOP MODE
-    else if (settingsTab == 3) maxFocus = 4; // OTA: OTA CATALOG, SORT BY, LAUNCHER, ROM BURNER, REBOOT
+    else if (settingsTab == 2) maxFocus = 0; // OFFLINE: PLAY LOOP ONLY
+    else if (settingsTab == 3) maxFocus = 1; // OTA: OTA CATALOG, SORT BY
     else if (settingsTab == 4) maxFocus = 2; // APPEARANCE: GLITCH TEXT, BRIGHTNESS, VOLUME
     
     if (settingsFocus == -1) {
@@ -1487,15 +1469,21 @@ void handleHardwareSettingsInput(Keyboard_Class::KeysState status) {
             } else if (settingsFocus == 2) {
                 showSystemFiles = !showSystemFiles;
             }
+        } else if (settingsTab == 2) { // OFFLINE
+            if (settingsFocus == 0) {
+                if (mp3PlayLoopMode == "name") mp3PlayLoopMode = "random";
+                else mp3PlayLoopMode = "name";
+                prefs.putString("loopMode", mp3PlayLoopMode);
+            }
         } else if (settingsTab == 3) { // OTA Sorting
             if (settingsFocus == 1) {
                 if (hasLeft) {
                     if (otaSortField == "downloads") otaSortField = "name";
-                    else if (otaSortField == "published_at") otaSortField = "downloads";
-                    else otaSortField = "published_at";
+                    else if (otaSortField == "date") otaSortField = "downloads";
+                    else otaSortField = "date";
                 } else {
-                    if (otaSortField == "downloads") otaSortField = "published_at";
-                    else if (otaSortField == "published_at") otaSortField = "name";
+                    if (otaSortField == "downloads") otaSortField = "date";
+                    else if (otaSortField == "date") otaSortField = "name";
                     else otaSortField = "downloads";
                 }
                 otaCatalogLoaded = false; // refresh next fetch
@@ -1534,56 +1522,16 @@ void handleHardwareSettingsInput(Keyboard_Class::KeysState status) {
     
     if (status.enter) {
         playSound(sound_select, sound_select_size);
-        if (settingsTab == 1) { // NETWORK Actions
-            if (settingsFocus == 2) {
-                startWifiScan();
-                drawHardwareSettings();
-            }
-        } else if (settingsTab == 2) { // OFFLINE Actions
-            if (settingsFocus == 0) {
-                if (isMp3Playing) {
-                    stopMp3();
-                } else {
-                    startMp3("/AFTERLIFE.mp3");
-                }
-                drawHardwareSettings();
-            }
-        } else if (settingsTab == 3) { // OTA Actions
-            if (settingsFocus == 0) {
-                appState = STATE_OTA_CATALOG;
-                otaCatalogFocus = 0;
-                drawOtaCatalog();
-            } else if (settingsFocus == 2) {
-                canvas.fillScreen(CP_BG);
-                canvas.setTextColor(CP_RED);
-                canvas.setTextSize(2);
-                canvas.drawCenterString("BOOTING LAUNCHER...", 120, 50);
-                pushCanvas();
-                delay(500);
-                bootToFactory();
-            } else if (settingsFocus == 3) {
-                canvas.fillScreen(CP_BG);
-                canvas.setTextColor(CP_RED);
-                canvas.setTextSize(2);
-                canvas.drawCenterString("ROM DOWNLOAD MODE", 120, 40);
-                canvas.setTextSize(1);
-                canvas.setTextColor(CP_YELLOW);
-                canvas.drawCenterString("CONNECT TO USB", 120, 70);
-                canvas.drawCenterString("AND FLASH FIRMWARE", 120, 85);
-                pushCanvas();
-                delay(1000);
-                REG_WRITE(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
-                ESP.restart();
-            } else if (settingsFocus == 4) {
-                canvas.fillScreen(CP_BG);
-                canvas.setTextColor(CP_RED);
-                canvas.setTextSize(2);
-                canvas.drawCenterString("REBOOTING...", 120, 50);
-                pushCanvas();
-                delay(500);
-                ESP.restart();
-            }
-        } else {
+        if (settingsTab == 1 && settingsFocus == 2) { // NETWORK: WiFi Scan
+            startWifiScan();
+            drawHardwareSettings();
+        } else if (settingsTab == 3 && settingsFocus == 0) { // OTA: Open Catalog
+            otaCatalogLoaded = false;
+            otaCatalogScrollOffset = 0;
+            appState = STATE_OTA_CATALOG;
+            otaCatalogFocus = 0;
+            drawOtaCatalog();
+        } else { // Exit to Splash screen (Boot Node)
             prefs.putInt("insane", insaneMode);
             populateFileList();
             fileManagerSelected = 0;
@@ -2560,6 +2508,8 @@ void handleSplashInput(Keyboard_Class::KeysState status) {
             authUser = "GUEST";
             enterMainMenu();
         } else if (splashBootFocus == 3) {
+            otaCatalogLoaded = false;
+            otaCatalogScrollOffset = 0;
             appState = STATE_OTA_CATALOG;
             otaCatalogFocus = 0;
             drawOtaCatalog();
@@ -3599,6 +3549,10 @@ void setup() {
     highScore = prefs.getInt("highscore", 0);
     savedSSID = prefs.getString("wifi_ssid", "");
     savedWifiPass = prefs.getString("wifi_pass", "");
+    mp3PlayLoopMode = prefs.getString("loopMode", "name");
+    if (mp3PlayLoopMode != "name" && mp3PlayLoopMode != "random") {
+        mp3PlayLoopMode = "name";
+    }
     if (prefs.isKey("insane")) {
         insaneMode = prefs.getInt("insane", -1);
         if (insaneMode == -1) {
