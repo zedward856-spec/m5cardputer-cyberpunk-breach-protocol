@@ -1065,7 +1065,7 @@ void readSelectedFileContent(String fileName) {
             if (fileName == "deck_config.json") {
                 openedFileContent.push_back("{");
                 openedFileContent.push_back("  \"deck_id\": \"CYBER_D_01\",");
-                openedFileContent.push_back("  \"os\": \"cyber_os_7.0\"");
+                openedFileContent.push_back("  \"os\": \"cyber_os_8.0\"");
                 openedFileContent.push_back("}");
             } else if (fileName == "breach_log.txt") {
                 openedFileContent.push_back("BREACH ACCESS LOG:");
@@ -2460,7 +2460,7 @@ void drawSplash() {
     
     canvas.setTextColor(CP_YELLOW);
     canvas.setCursor(116, 24);
-    canvas.print("VERSION: v7.0reborn");
+    canvas.print("VERSION: v8.0");
     
     canvas.setTextSize(1);
     canvas.setTextColor(WHITE);
@@ -3569,7 +3569,7 @@ void initSPIFFS() {
             if (f) {
                 f.println("{");
                 f.println("  \"deck_id\": \"CYBER_D_01\",");
-                f.println("  \"os\": \"cyber_os_7.0\",");
+                f.println("  \"os\": \"cyber_os_8.0\",");
                 f.println("  \"icebreaker\": \"v4.2\"");
                 f.println("}");
                 f.close();
