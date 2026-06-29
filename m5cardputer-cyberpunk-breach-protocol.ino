@@ -184,7 +184,7 @@ enum AppState {
 AppState appState = STATE_SPLASH;
 
 bool isGuest = false;
-int insaneMode = 1;
+int insaneMode = 0;
 bool lastBreachFailed = false;
 String authUser = "";
 String authPass = "";
@@ -3391,12 +3391,12 @@ void setup() {
     if (prefs.isKey("insane")) {
         insaneMode = prefs.getInt("insane", -1);
         if (insaneMode == -1) {
-            insaneMode = prefs.getBool("insane", false) ? 2 : 1;
+            insaneMode = prefs.getBool("insane", false) ? 2 : 0;
             prefs.remove("insane");
             prefs.putInt("insane", insaneMode);
         }
     } else {
-        insaneMode = 1;
+        insaneMode = 0;
     }
     authUser = prefs.getString("user", "");
     authPass = prefs.getString("pass", "");
