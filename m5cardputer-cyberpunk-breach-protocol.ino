@@ -11,12 +11,55 @@
 #include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
 #include <ArduinoOTA.h>
-#include "Audio.h"
+#include <AudioOutput.h>
+#include <AudioFileSourceSD.h>
+#include <AudioFileSourceSPIFFS.h>
+#include <AudioGeneratorMP3.h>
+#include <AudioFileSourceBuffer.h>
 
 struct RealFile {
     String name;
     String sizeStr;
     bool isDir;
+};
+
+class AudioOutputM5Speaker : public AudioOutput {
+  public:
+    AudioOutputM5Speaker(m5::Speaker_Class* m5sound, uint8_t virtual_sound_channel = 0) { 
+        _m5sound = m5sound; 
+        _virtual_ch = virtual_sound_channel; 
+    }
+    virtual ~AudioOutputM5Speaker(void) {};
+    virtual bool begin(void) override { return true; }
+    virtual bool ConsumeSample(int16_t sample[2]) override {
+      if (_tri_buffer_index < tri_buf_size) {
+        _tri_buffer[_tri_index][_tri_buffer_index] = sample[0]; 
+        _tri_buffer[_tri_index][_tri_buffer_index+1] = sample[1]; 
+        _tri_buffer_index += 2; 
+        return true;
+      }
+      flush(); 
+      return false;
+    }
+    virtual void flush(void) override {
+      if (_tri_buffer_index) { 
+        _m5sound->playRaw(_tri_buffer[_tri_index], _tri_buffer_index, hertz, true, 1, _virtual_ch); 
+        _tri_index = _tri_index < 2 ? _tri_index + 1 : 0; 
+        _tri_buffer_index = 0; 
+      }
+    }
+    virtual bool stop(void) override { 
+        flush(); 
+        _m5sound->stop(_virtual_ch); 
+        return true; 
+    }
+  protected:
+    m5::Speaker_Class* _m5sound; 
+    uint8_t _virtual_ch; 
+    static constexpr size_t tri_buf_size = 2048;
+    int16_t _tri_buffer[3][tri_buf_size]; 
+    size_t _tri_buffer_index = 0; 
+    size_t _tri_index = 0;
 };
 
 enum SortField {
@@ -616,7 +659,11 @@ bool showSystemFiles = false;
 unsigned long lastFileSelectionTime = 0;
 int marqueeScrollOffset = 0;
 unsigned long lastMarqueeUpdate = 0;
-Audio *audio = nullptr;
+AudioGeneratorMP3 *mp3 = nullptr;
+AudioFileSourceSD *fileSD = nullptr;
+AudioFileSourceSPIFFS *fileSPIFFS = nullptr;
+AudioFileSourceBuffer *audioBuffer = nullptr;
+AudioOutputM5Speaker *audioOut = nullptr;
 bool isMp3Playing = false;
 String mp3Filename = "";
 unsigned long mp3StartTime = 0;
@@ -1312,14 +1359,8 @@ void drawFileManager(bool push) {
         
         // Progress Bar
         canvas.drawRect(40, 56, 160, 4, CP_DIM);
-        uint32_t elapsed = 0;
-        uint32_t duration = 180;
-        if (audio) {
-            elapsed = audio->getAudioCurrentTime();
-            duration = audio->getAudioFileDuration();
-            if (duration == 0) duration = 180;
-            mp3DurationSeconds = duration;
-        }
+        uint32_t elapsed = (millis() - mp3StartTime) / 1000;
+        uint32_t duration = mp3DurationSeconds;
         int progressW = (elapsed * 160) / duration;
         if (progressW > 160) progressW = 160;
         canvas.fillRect(40, 56, progressW, 4, CP_CYAN);
@@ -1585,31 +1626,51 @@ void handleFileManagerInput(Keyboard_Class::KeysState status) {
 void stopMp3() {
     isMp3Playing = false;
     mp3IsPaused = false;
-    if (audio) {
-        audio->stopSong();
-        delete audio;
-        audio = nullptr;
+    if (mp3) {
+        mp3->stop();
+        delete mp3;
+        mp3 = nullptr;
     }
-    M5Cardputer.Speaker.begin();
+    if (audioBuffer) {
+        audioBuffer->close();
+        delete audioBuffer;
+        audioBuffer = nullptr;
+    }
+    if (fileSD) {
+        fileSD->close();
+        delete fileSD;
+        fileSD = nullptr;
+    }
+    if (fileSPIFFS) {
+        fileSPIFFS->close();
+        delete fileSPIFFS;
+        fileSPIFFS = nullptr;
+    }
+    if (audioOut) {
+        audioOut->stop();
+        delete audioOut;
+        audioOut = nullptr;
+    }
     appState = STATE_FILE_MANAGER;
     drawFileManager();
 }
 
 void startMp3(String fileName) {
-    M5Cardputer.Speaker.end();
-    
-    audio = new Audio();
-    audio->setPinout(41, 43, 42);
-    int volLevel = (globalVolume * 21) / 100;
-    audio->setVolume(volLevel);
-    
     String fullPath = fileManagerCurrentPath + (fileManagerCurrentPath == "/" ? "" : "/") + fileName;
+    
+    audioOut = new AudioOutputM5Speaker(&M5Cardputer.Speaker, 0);
     
     bool started = false;
     if (isSDCardManager) {
-        started = audio->connecttoFS(SD, fullPath.c_str());
+        fileSD = new AudioFileSourceSD(fullPath.c_str());
+        audioBuffer = new AudioFileSourceBuffer(fileSD, 8192);
+        mp3 = new AudioGeneratorMP3();
+        started = mp3->begin(audioBuffer, audioOut);
     } else {
-        started = audio->connecttoFS(SPIFFS, fullPath.c_str());
+        fileSPIFFS = new AudioFileSourceSPIFFS(fullPath.c_str());
+        audioBuffer = new AudioFileSourceBuffer(fileSPIFFS, 8192);
+        mp3 = new AudioGeneratorMP3();
+        started = mp3->begin(audioBuffer, audioOut);
     }
     
     if (started) {
@@ -1622,9 +1683,11 @@ void startMp3(String fileName) {
         appState = STATE_FILE_MANAGER;
         showFileContent = false;
     } else {
-        delete audio;
-        audio = nullptr;
-        M5Cardputer.Speaker.begin();
+        if (mp3) { delete mp3; mp3 = nullptr; }
+        if (audioBuffer) { delete audioBuffer; audioBuffer = nullptr; }
+        if (fileSD) { delete fileSD; fileSD = nullptr; }
+        if (fileSPIFFS) { delete fileSPIFFS; fileSPIFFS = nullptr; }
+        if (audioOut) { delete audioOut; audioOut = nullptr; }
         
         canvas.startWrite();
         canvas.fillScreen(CP_BG);
@@ -3881,9 +3944,8 @@ void loop() {
         }
         
         if (isMp3Playing) {
-            if (audio) {
-                audio->loop();
-                if (!audio->isRunning()) {
+            if (mp3) {
+                if (!mp3->loop()) {
                     stopMp3();
                 } else {
                     static unsigned long lastVisualizerUpdate = 0;
