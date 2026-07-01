@@ -41,7 +41,7 @@ void drawSplash() {
     
     canvas.setTextColor(CP_YELLOW);
     canvas.setCursor(116, 24);
-    canvas.print("VERSION: v8.0");
+    canvas.print("VERSION: v9.0split");
     
     canvas.setTextSize(1);
     canvas.setTextColor(WHITE);
